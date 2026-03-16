@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="VirtualFunds.Core/VirtualFunds.Core.csproj" />
+  <Project Path="VirtualFunds.WPF/VirtualFunds.WPF.csproj" />
+</Solution>
