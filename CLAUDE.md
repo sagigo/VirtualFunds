@@ -97,14 +97,21 @@ VirtualFunds/
 └── mobile/                      (Kotlin / Android — future)
 ```
 
-### UI Architecture (MVVM variant, DI container)
-- **To be decided.** Ask before choosing.
+### UI Architecture
+- **MVVM** with **CommunityToolkit.Mvvm** — source generators for `[ObservableProperty]`, `[RelayCommand]`. Eliminates INotifyPropertyChanged / ICommand boilerplate.
+- **DI** with **Microsoft.Extensions.DependencyInjection** — services registered in `App.xaml.cs`, injected into ViewModels via constructor.
 
 ### Testing
-- **To be decided.** Ask before setting up a test project.
+- **xUnit** as the test framework.
+- Test project: `desktop/VirtualFunds.Core.Tests/` (created when needed).
+- `[Fact]` for simple tests, `[Theory]` + `[InlineData]` for parameterized tests (especially money math).
+- Async test methods return `Task` — xUnit handles them natively.
 
 ### Async Patterns
-- **To be decided.** Ask before establishing the async pattern.
+- **`async/await` throughout.** All service methods return `Task<T>` / `Task`. ViewModels use async commands.
+- **`ConfigureAwait(false)`** in `VirtualFunds.Core` (library code, no UI context).
+- **No `ConfigureAwait`** in `VirtualFunds.WPF` (needs to return to UI thread).
+- **`Async` suffix** on all async method names (e.g., `GetPortfoliosAsync`).
 
 ---
 
@@ -119,7 +126,10 @@ VirtualFunds/
 - The `db-reviewer` agent runs automatically after any `.sql` file is written or modified.
 
 ### Configuration & Secrets
-- **To be decided.** Ask before setting up config management. Never commit secrets to git regardless of approach.
+- **`appsettings.json`** — checked into git with placeholder/empty values for Supabase config keys (`Supabase:Url`, `Supabase:AnonKey`).
+- **User Secrets** (`dotnet user-secrets`) — for actual secret values during development. Stored outside the repo.
+- Uses `Microsoft.Extensions.Configuration` (same ecosystem as the DI container).
+- Never commit secrets to git regardless of approach.
 
 ---
 
@@ -130,10 +140,15 @@ VirtualFunds/
 - All code, comments, and commit messages in **English**.
 
 ### RTL Layout
-- **To be decided.** Ask before setting layout direction.
+- **Global RTL.** Set `FlowDirection="RightToLeft"` on the main window. All child elements inherit it.
+- Override to `LeftToRight` locally where needed (e.g., numeric input fields).
 
 ### Money Display
-- **To be decided.** Ask before implementing money formatting.
+- **Custom formatter** in Core: `FormatAgoras(long agoras)` → `"1,234.56 ₪"`
+- Shekel symbol (`₪`) placed **after** the number.
+- Two decimal places always shown.
+- Thousands separator: comma.
+- Display only — stored value stays `long` agoras. No `decimal` or `float` in storage or arithmetic.
 
 ---
 
@@ -142,17 +157,4 @@ VirtualFunds/
 - Free-form, descriptive commit messages. No enforced format like conventional commits.
 - Just be clear about what changed and why.
 
----
 
-## Decisions Log
-
-Track significant decisions here as they are made during development.
-
-| # | Topic | Decision | Date |
-|---|-------|----------|------|
-| | Async pattern | TBD | |
-| | Testing framework | TBD | |
-| | Migration management | TBD | |
-| | Config management | TBD | |
-| | RTL layout | TBD | |
-| | Money display formatting | TBD | |
