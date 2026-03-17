@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(mkdir -p c:/Users/sagig/source/repos/VirtualFunds/desktop)",
-      "Bash(dotnet new:*)"
+      "Bash(dotnet new:*)",
+      "mcp__claude_ai_Supabase__list_projects",
+      "mcp__claude_ai_Supabase__list_tables",
+      "mcp__claude_ai_Supabase__apply_migration",
+      "mcp__claude_ai_Supabase__execute_sql"
     ]
   }
 }

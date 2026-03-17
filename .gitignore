@@ -26,3 +26,4 @@ desktop.ini
 *.env
 appsettings.*.json
 !appsettings.json
+db/tests/__pycache__/conftest.cpython-312.pyc
