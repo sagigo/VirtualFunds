@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="VirtualFunds.Core.Tests/VirtualFunds.Core.Tests.csproj" />
   <Project Path="VirtualFunds.Core/VirtualFunds.Core.csproj" />
   <Project Path="VirtualFunds.WPF/VirtualFunds.WPF.csproj" />
 </Solution>

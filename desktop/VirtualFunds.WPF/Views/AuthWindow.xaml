@@ -1,0 +1,105 @@
+<Window x:Class="VirtualFunds.WPF.Views.AuthWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="כניסה"
+        Width="380"
+        Height="360"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        FlowDirection="RightToLeft">
+
+    <Border Padding="32,28,32,28">
+        <StackPanel>
+
+            <!-- App title -->
+            <TextBlock Text="קרנות וירטואליות"
+                       FontSize="22"
+                       FontWeight="Bold"
+                       HorizontalAlignment="Center"
+                       Margin="0,0,0,4" />
+
+            <!-- Form heading — changes with mode -->
+            <TextBlock FontSize="15"
+                       HorizontalAlignment="Center"
+                       Margin="0,0,0,20">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Text" Value="כניסה" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsSignUpMode}" Value="True">
+                                <Setter Property="Text" Value="הרשמה" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+
+            <!-- Email -->
+            <TextBlock Text="דוא״ל" Margin="0,0,0,4" />
+            <TextBox x:Name="EmailBox"
+                     Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}"
+                     FlowDirection="LeftToRight"
+                     Margin="0,0,0,12"
+                     Padding="6,4" />
+
+            <!-- Password -->
+            <TextBlock Text="סיסמה" Margin="0,0,0,4" />
+            <!-- PasswordBox does not support data binding (by WPF design). -->
+            <!-- The code-behind handles PasswordChanged and forwards to the ViewModel. -->
+            <PasswordBox x:Name="PasswordBox"
+                         FlowDirection="LeftToRight"
+                         Margin="0,0,0,12"
+                         Padding="6,4"
+                         PasswordChanged="PasswordBox_PasswordChanged" />
+
+            <!-- Error message — hidden when empty -->
+            <TextBlock Text="{Binding ErrorMessage}"
+                       Foreground="Red"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,10"
+                       Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibilityConverter}}" />
+
+            <!-- Submit button -->
+            <Button Command="{Binding SubmitCommand}"
+                    IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBooleanConverter}}"
+                    Padding="0,8"
+                    Margin="0,0,0,10">
+                <Button.Style>
+                    <Style TargetType="Button">
+                        <Setter Property="Content" Value="כנס" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsSignUpMode}" Value="True">
+                                <Setter Property="Content" Value="הירשם" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+
+            <!-- Loading indicator — visible only while loading -->
+            <TextBlock Text="טוען..."
+                       HorizontalAlignment="Center"
+                       Margin="0,0,0,10"
+                       Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+            <!-- Mode toggle link -->
+            <Button Command="{Binding ToggleModeCommand}"
+                    BorderThickness="0"
+                    Background="Transparent"
+                    Cursor="Hand"
+                    HorizontalAlignment="Center">
+                <Button.Style>
+                    <Style TargetType="Button">
+                        <Setter Property="Content" Value="אין לך חשבון? הירשם כאן" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsSignUpMode}" Value="True">
+                                <Setter Property="Content" Value="יש לך חשבון? כנס" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+
+        </StackPanel>
+    </Border>
+</Window>

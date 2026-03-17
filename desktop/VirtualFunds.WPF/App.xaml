@@ -1,9 +1,15 @@
-﻿<Application x:Class="VirtualFunds.WPF.App"
+<Application x:Class="VirtualFunds.WPF.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:VirtualFunds.WPF"
-             StartupUri="MainWindow.xaml">
+             xmlns:converters="clr-namespace:VirtualFunds.WPF.Converters">
+    <!-- StartupUri is removed — startup is handled programmatically in App.xaml.cs OnStartup. -->
     <Application.Resources>
-         
+        <!-- Converters registered here are available to all Views in the application. -->
+        <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
+        <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
+        <converters:InverseBooleanConverter x:Key="InverseBooleanConverter" />
+        <!-- Built-in WPF converter: bool true → Visible, false → Collapsed. -->
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
     </Application.Resources>
 </Application>
