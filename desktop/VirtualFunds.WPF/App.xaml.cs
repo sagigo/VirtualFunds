@@ -49,10 +49,12 @@ public partial class App : Application
         services.AddSingleton(supabaseClient);
         services.AddSingleton<ISessionStore, LocalSessionStore>();
         services.AddSingleton<IAuthService, SupabaseAuthService>();
+        services.AddSingleton<IPortfolioService, SupabasePortfolioService>();
 
         // Windows and ViewModels are transient — a fresh instance is created each time
         // (e.g., AuthWindow re-opens after sign-out).
         services.AddTransient<AuthViewModel>();
+        services.AddTransient<MainViewModel>();
         services.AddTransient<AuthWindow>();
         services.AddTransient<MainWindow>();
 

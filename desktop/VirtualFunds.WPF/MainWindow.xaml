@@ -5,16 +5,127 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="קרנות וירטואליות"
-        Height="450" Width="800"
+        Height="500" Width="700"
+        WindowStartupLocation="CenterScreen"
         FlowDirection="RightToLeft">
-    <Grid>
-        <!-- Temporary stub: sign-out button to close the auth loop end-to-end.
-             This will be replaced when the full MainWindow UI is built. -->
-        <Button Content="התנתק"
-                HorizontalAlignment="Left"
-                VerticalAlignment="Top"
-                Margin="12"
-                Padding="12,6"
-                Click="SignOutButton_Click" />
-    </Grid>
+
+    <DockPanel Margin="16">
+
+        <!-- Top: Header with title, sign-out, and create button -->
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+            <Button Content="התנתק"
+                    Command="{Binding SignOutCommand}"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    Padding="12,4" />
+            <Button Content="+ תיק חדש"
+                    Command="{Binding CreatePortfolioCommand}"
+                    IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBooleanConverter}}"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    Padding="12,4"
+                    Margin="8,0,0,0" />
+            <TextBlock Text="בחירת תיק"
+                       FontSize="20"
+                       FontWeight="Bold"
+                       VerticalAlignment="Center" />
+        </DockPanel>
+
+        <!-- Error message -->
+        <TextBlock DockPanel.Dock="Top"
+                   Text="{Binding ErrorMessage}"
+                   Foreground="Red"
+                   TextWrapping="Wrap"
+                   Margin="0,0,0,8"
+                   Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibilityConverter}}" />
+
+        <!-- Loading indicator -->
+        <TextBlock DockPanel.Dock="Top"
+                   Text="טוען..."
+                   HorizontalAlignment="Center"
+                   Margin="0,8,0,8"
+                   Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+        <!-- Center: content area -->
+        <Grid>
+            <!-- Empty state message -->
+            <TextBlock Text="עדיין לא יצרת תיקים. לחץ על '+ תיק חדש' כדי להתחיל."
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       FontSize="14"
+                       Foreground="Gray">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding IsEmpty}" Value="True" />
+                                    <Condition Binding="{Binding IsLoading}" Value="False" />
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="Visibility" Value="Visible" />
+                            </MultiDataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+
+            <!-- Portfolio list -->
+            <ListBox x:Name="PortfolioListBox"
+                     ItemsSource="{Binding Portfolios}"
+                     SelectedItem="{Binding SelectedPortfolio}"
+                     BorderThickness="0"
+                     HorizontalContentAlignment="Stretch"
+                     MouseDoubleClick="PortfolioListBox_MouseDoubleClick">
+                <ListBox.Style>
+                    <Style TargetType="ListBox">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsEmpty}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ListBox.Style>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <DockPanel Margin="4,8">
+                            <!-- Right-click context menu -->
+                            <DockPanel.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="פתח"
+                                              Command="{Binding DataContext.OpenPortfolioCommand,
+                                                  Source={x:Reference PortfolioListBox}}"
+                                              CommandParameter="{Binding}" />
+                                    <MenuItem Header="שנה שם"
+                                              Command="{Binding DataContext.RenamePortfolioCommand,
+                                                  Source={x:Reference PortfolioListBox}}"
+                                              CommandParameter="{Binding}" />
+                                    <Separator />
+                                    <MenuItem Header="מחק"
+                                              Command="{Binding DataContext.DeletePortfolioCommand,
+                                                  Source={x:Reference PortfolioListBox}}"
+                                              CommandParameter="{Binding}" />
+                                </ContextMenu>
+                            </DockPanel.ContextMenu>
+
+                            <!-- Total balance (left side in RTL) -->
+                            <TextBlock DockPanel.Dock="Left"
+                                       Text="{Binding FormattedTotal}"
+                                       FontSize="14"
+                                       Foreground="Gray"
+                                       VerticalAlignment="Center"
+                                       FlowDirection="LeftToRight" />
+
+                            <!-- Portfolio name -->
+                            <TextBlock Text="{Binding Name}"
+                                       FontSize="15"
+                                       VerticalAlignment="Center" />
+                        </DockPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
+
+    </DockPanel>
 </Window>
