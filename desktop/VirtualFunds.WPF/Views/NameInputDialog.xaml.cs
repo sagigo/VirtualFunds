@@ -14,11 +14,11 @@ namespace VirtualFunds.WPF.Views;
 public partial class NameInputDialog : Window
 {
     /// <summary>
-    /// The portfolio name entered by the user.
+    /// The name entered by the user.
     /// Set before showing the dialog to pre-fill (e.g., for rename), or leave empty for create.
     /// Read after the dialog closes with <c>DialogResult == true</c>.
     /// </summary>
-    public string PortfolioName
+    public string InputName
     {
         get => NameTextBox.Text;
         set => NameTextBox.Text = value;

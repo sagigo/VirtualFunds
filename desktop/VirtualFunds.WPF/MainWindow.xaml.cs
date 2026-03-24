@@ -11,7 +11,7 @@ namespace VirtualFunds.WPF;
 /// Main application window — portfolio selection screen.
 /// <para>
 /// Shows a list of portfolios with their total balances. Double-click or
-/// right-click → "Open" navigates to the portfolio detail screen (future).
+/// right-click → "Open" navigates to the portfolio detail screen.
 /// Right-click also provides Rename and Delete actions.
 /// </para>
 /// </summary>
@@ -19,17 +19,22 @@ public partial class MainWindow : Window
 {
     private readonly MainViewModel _viewModel;
     private readonly Func<AuthWindow> _authWindowFactory;
+    private readonly Func<Guid, string, PortfolioWindow> _portfolioWindowFactory;
 
     /// <summary>
-    /// Initializes MainWindow with its ViewModel and a factory for AuthWindow.
-    /// Both are injected from the DI container.
+    /// Initializes MainWindow with its ViewModel and factories for navigation.
+    /// All parameters are injected from the DI container.
     /// </summary>
-    public MainWindow(MainViewModel viewModel, Func<AuthWindow> authWindowFactory)
+    public MainWindow(
+        MainViewModel viewModel,
+        Func<AuthWindow> authWindowFactory,
+        Func<Guid, string, PortfolioWindow> portfolioWindowFactory)
     {
         InitializeComponent();
 
         _viewModel = viewModel;
         _authWindowFactory = authWindowFactory;
+        _portfolioWindowFactory = portfolioWindowFactory;
 
         DataContext = _viewModel;
 
@@ -37,6 +42,7 @@ public partial class MainWindow : Window
         _viewModel.NameInputRequested += OnNameInputRequested;
         _viewModel.ConfirmationRequested += OnConfirmationRequested;
         _viewModel.SignOutRequested += OnSignOutRequested;
+        _viewModel.PortfolioOpenRequested += OnPortfolioOpenRequested;
 
         // Load portfolios when the window is shown.
         Loaded += async (_, _) => await _viewModel.LoadPortfoliosCommand.ExecuteAsync(null);
@@ -71,11 +77,11 @@ public partial class MainWindow : Window
 
         if (existingName is not null)
         {
-            dialog.PortfolioName = existingName;
+            dialog.InputName = existingName;
         }
 
         var result = dialog.ShowDialog() == true
-            ? dialog.PortfolioName
+            ? dialog.InputName
             : null;
 
         return Task.FromResult(result);
@@ -105,6 +111,16 @@ public partial class MainWindow : Window
     {
         var authWindow = _authWindowFactory();
         authWindow.Show();
+        Close();
+    }
+
+    /// <summary>
+    /// Called when the user opens a portfolio. Opens PortfolioWindow and closes this window.
+    /// </summary>
+    private void OnPortfolioOpenRequested(PortfolioListItem portfolio)
+    {
+        var portfolioWindow = _portfolioWindowFactory(portfolio.PortfolioId, portfolio.Name);
+        portfolioWindow.Show();
         Close();
     }
 }

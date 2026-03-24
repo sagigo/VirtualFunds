@@ -50,6 +50,7 @@ public partial class App : Application
         services.AddSingleton<ISessionStore, LocalSessionStore>();
         services.AddSingleton<IAuthService, SupabaseAuthService>();
         services.AddSingleton<IPortfolioService, SupabasePortfolioService>();
+        services.AddSingleton<IFundService, SupabaseFundService>();
 
         // Windows and ViewModels are transient — a fresh instance is created each time
         // (e.g., AuthWindow re-opens after sign-out).
@@ -61,6 +62,18 @@ public partial class App : Application
         // Register factories so windows can create each other without a direct IServiceProvider dependency.
         services.AddTransient<Func<MainWindow>>(sp => () => sp.GetRequiredService<MainWindow>());
         services.AddTransient<Func<AuthWindow>>(sp => () => sp.GetRequiredService<AuthWindow>());
+
+        // PortfolioWindow factory — takes runtime parameters (portfolioId, portfolioName)
+        // because the ViewModel needs to know which portfolio to display.
+        services.AddTransient<Func<Guid, string, PortfolioWindow>>(sp =>
+            (portfolioId, portfolioName) =>
+            {
+                var fundService = sp.GetRequiredService<IFundService>();
+                var portfolioService = sp.GetRequiredService<IPortfolioService>();
+                var vm = new PortfolioViewModel(fundService, portfolioService, portfolioId, portfolioName);
+                var mainWindowFactory = sp.GetRequiredService<Func<MainWindow>>();
+                return new PortfolioWindow(vm, mainWindowFactory);
+            });
 
         _services = services.BuildServiceProvider();
 

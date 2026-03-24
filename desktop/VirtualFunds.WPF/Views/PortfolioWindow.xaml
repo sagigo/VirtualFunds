@@ -1,0 +1,159 @@
+<Window x:Class="VirtualFunds.WPF.Views.PortfolioWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="{Binding PortfolioName, StringFormat='קרנות וירטואליות — {0}'}"
+        Height="500" Width="700"
+        WindowStartupLocation="CenterScreen"
+        FlowDirection="RightToLeft">
+
+    <DockPanel Margin="16">
+
+        <!-- Top: Header with back button, portfolio name, total, and create fund button -->
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+            <Button Content="← חזרה"
+                    Command="{Binding GoBackCommand}"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    Padding="12,4" />
+            <Button Content="+ קרן חדשה"
+                    Command="{Binding CreateFundCommand}"
+                    IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBooleanConverter}}"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    Padding="12,4"
+                    Margin="8,0,0,0" />
+            <TextBlock Text="{Binding FormattedTotal}"
+                       FontSize="14"
+                       Foreground="Gray"
+                       VerticalAlignment="Center"
+                       HorizontalAlignment="Left"
+                       Margin="12,0,0,0"
+                       FlowDirection="LeftToRight" />
+            <TextBlock Text="{Binding PortfolioName}"
+                       FontSize="20"
+                       FontWeight="Bold"
+                       VerticalAlignment="Center" />
+        </DockPanel>
+
+        <!-- Error message -->
+        <TextBlock DockPanel.Dock="Top"
+                   Text="{Binding ErrorMessage}"
+                   Foreground="Red"
+                   TextWrapping="Wrap"
+                   Margin="0,0,0,8"
+                   Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibilityConverter}}" />
+
+        <!-- Loading indicator -->
+        <TextBlock DockPanel.Dock="Top"
+                   Text="טוען..."
+                   HorizontalAlignment="Center"
+                   Margin="0,8,0,8"
+                   Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+        <!-- Bottom: portfolio actions and future info (TODO) -->
+        <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+            <Separator Margin="0,0,0,8" />
+            <!-- TODO: portfolio-level info will appear here -->
+            <StackPanel Orientation="Horizontal">
+                <Button Content="שנה שם תיק"
+                        Command="{Binding RenamePortfolioCommand}"
+                        IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBooleanConverter}}"
+                        Padding="12,4" />
+                <Button Content="מחק תיק"
+                        Command="{Binding DeletePortfolioCommand}"
+                        IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBooleanConverter}}"
+                        Padding="12,4"
+                        Margin="8,0,0,0" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Center: content area -->
+        <Grid>
+            <!-- Empty state message -->
+            <TextBlock Text="אין קרנות בתיק זה. לחץ על '+ קרן חדשה' כדי להתחיל."
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       FontSize="14"
+                       Foreground="Gray">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding IsEmpty}" Value="True" />
+                                    <Condition Binding="{Binding IsLoading}" Value="False" />
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="Visibility" Value="Visible" />
+                            </MultiDataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+
+            <!-- Fund list -->
+            <ListBox x:Name="FundListBox"
+                     ItemsSource="{Binding Funds}"
+                     SelectedItem="{Binding SelectedFund}"
+                     BorderThickness="0"
+                     HorizontalContentAlignment="Stretch">
+                <ListBox.Style>
+                    <Style TargetType="ListBox">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsEmpty}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ListBox.Style>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <DockPanel Margin="4,8">
+                            <!-- Right-click context menu -->
+                            <DockPanel.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="שנה שם"
+                                              Command="{Binding DataContext.RenameFundCommand,
+                                                  Source={x:Reference FundListBox}}"
+                                              CommandParameter="{Binding}" />
+                                    <Separator />
+                                    <MenuItem Header="מחק"
+                                              Command="{Binding DataContext.DeleteFundCommand,
+                                                  Source={x:Reference FundListBox}}"
+                                              CommandParameter="{Binding}" />
+                                </ContextMenu>
+                            </DockPanel.ContextMenu>
+
+                            <!-- Balance (left side in RTL) -->
+                            <TextBlock DockPanel.Dock="Left"
+                                       Text="{Binding FormattedBalance}"
+                                       FontSize="14"
+                                       Foreground="Gray"
+                                       VerticalAlignment="Center"
+                                       FlowDirection="LeftToRight" />
+
+                            <!-- Allocation percent -->
+                            <TextBlock DockPanel.Dock="Left"
+                                       Text="{Binding FormattedAllocation}"
+                                       FontSize="12"
+                                       Foreground="DarkGray"
+                                       VerticalAlignment="Center"
+                                       Margin="12,0,0,0"
+                                       FlowDirection="LeftToRight" />
+
+                            <!-- Fund name -->
+                            <TextBlock Text="{Binding Name}"
+                                       FontSize="15"
+                                       VerticalAlignment="Center" />
+                        </DockPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
+
+    </DockPanel>
+</Window>
