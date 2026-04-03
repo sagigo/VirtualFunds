@@ -17,8 +17,9 @@ public class PortfolioViewModelTests
     private const string PortfolioName = "תיק חיסכון";
 
     private readonly IFundService _fundService = Substitute.For<IFundService>();
+    private readonly IPortfolioService _portfolioService = Substitute.For<IPortfolioService>();
 
-    private PortfolioViewModel MakeVm() => new(_fundService, PortfolioId, PortfolioName);
+    private PortfolioViewModel MakeVm() => new(_fundService, _portfolioService, PortfolioId, PortfolioName);
 
     // -----------------------------------------------------------------------------------------
     // Helpers
@@ -40,6 +41,12 @@ public class PortfolioViewModelTests
     private static void StubConfirmation(PortfolioViewModel vm, bool confirmed)
     {
         vm.ConfirmationRequested += _ => Task.FromResult(confirmed);
+    }
+
+    /// <summary>Wires the AmountInputRequested event to return a predetermined amount.</summary>
+    private static void StubAmountInput(PortfolioViewModel vm, long? amountAgoras)
+    {
+        vm.AmountInputRequested += (_, _) => Task.FromResult(amountAgoras);
     }
 
     /// <summary>Creates a sample fund list item for testing.</summary>
@@ -142,6 +149,7 @@ public class PortfolioViewModelTests
 
         var vm = MakeVm();
         StubFundCreate(vm, ("חדשה", 0));
+        StubConfirmation(vm, true);
 
         await vm.CreateFundCommand.ExecuteAsync(null);
 
@@ -157,6 +165,7 @@ public class PortfolioViewModelTests
 
         var vm = MakeVm();
         StubFundCreate(vm, ("חדשה", 15050));
+        StubConfirmation(vm, true);
 
         await vm.CreateFundCommand.ExecuteAsync(null);
 
@@ -182,6 +191,7 @@ public class PortfolioViewModelTests
 
         var vm = MakeVm();
         StubFundCreate(vm, ("", 0));
+        StubConfirmation(vm, true);
 
         await vm.CreateFundCommand.ExecuteAsync(null);
 
@@ -197,6 +207,7 @@ public class PortfolioViewModelTests
 
         var vm = MakeVm();
         StubFundCreate(vm, ("כפולה", 0));
+        StubConfirmation(vm, true);
 
         await vm.CreateFundCommand.ExecuteAsync(null);
 
@@ -211,6 +222,7 @@ public class PortfolioViewModelTests
 
         var vm = MakeVm();
         StubFundCreate(vm, ("קרן", -100));
+        StubConfirmation(vm, true);
 
         await vm.CreateFundCommand.ExecuteAsync(null);
 
@@ -229,6 +241,7 @@ public class PortfolioViewModelTests
 
         var vm = MakeVm();
         StubNameInput(vm, "חדשה");
+        StubConfirmation(vm, true);
 
         await vm.RenameFundCommand.ExecuteAsync(item);
 
@@ -255,6 +268,7 @@ public class PortfolioViewModelTests
 
         var vm = MakeVm();
         StubNameInput(vm, "");
+        StubConfirmation(vm, true);
 
         await vm.RenameFundCommand.ExecuteAsync(MakeItem());
 
@@ -269,6 +283,7 @@ public class PortfolioViewModelTests
 
         var vm = MakeVm();
         StubNameInput(vm, "כפולה");
+        StubConfirmation(vm, true);
 
         await vm.RenameFundCommand.ExecuteAsync(MakeItem());
 
@@ -283,6 +298,7 @@ public class PortfolioViewModelTests
 
         var vm = MakeVm();
         StubNameInput(vm, "שם חדש");
+        StubConfirmation(vm, true);
 
         await vm.RenameFundCommand.ExecuteAsync(MakeItem());
 
@@ -297,6 +313,7 @@ public class PortfolioViewModelTests
 
         var vm = MakeVm();
         StubNameInput(vm, "שם חדש");
+        StubConfirmation(vm, true);
 
         await vm.RenameFundCommand.ExecuteAsync(MakeItem());
 
@@ -386,6 +403,184 @@ public class PortfolioViewModelTests
         await vm.DeleteFundCommand.ExecuteAsync(MakeItem());
 
         Assert.NotEmpty(vm.ErrorMessage);
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // RevaluePortfolio
+    // -----------------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task RevaluePortfolio_Success_CallsServiceAndReloads()
+    {
+        var funds = new List<FundListItem> { MakeItem("א", 10000, 100.0) };
+        _fundService.GetFundsAsync(PortfolioId).Returns(funds);
+        var vm = MakeVm();
+        await vm.LoadFundsCommand.ExecuteAsync(null); // pre-load funds into Funds collection
+
+        StubAmountInput(vm, 20000);
+        StubConfirmation(vm, true);
+
+        await vm.RevaluePortfolioCommand.ExecuteAsync(null);
+
+        await _fundService.Received(1).RevaluePortfolioAsync(PortfolioId, 20000);
+    }
+
+    [Fact]
+    public async Task RevaluePortfolio_NoFunds_SetsHebrewErrorMessage_DoesNotCallService()
+    {
+        _fundService.GetFundsAsync(PortfolioId).Returns(new List<FundListItem>());
+        var vm = MakeVm();
+        await vm.LoadFundsCommand.ExecuteAsync(null); // loads empty list
+
+        StubAmountInput(vm, 20000);
+
+        await vm.RevaluePortfolioCommand.ExecuteAsync(null);
+
+        Assert.NotEmpty(vm.ErrorMessage);
+        Assert.DoesNotContain("Exception", vm.ErrorMessage);
+        await _fundService.DidNotReceive().RevaluePortfolioAsync(Arg.Any<Guid>(), Arg.Any<long>());
+    }
+
+    [Fact]
+    public async Task RevaluePortfolio_Cancelled_DoesNotCallService()
+    {
+        var funds = new List<FundListItem> { MakeItem() };
+        _fundService.GetFundsAsync(PortfolioId).Returns(funds);
+        var vm = MakeVm();
+        await vm.LoadFundsCommand.ExecuteAsync(null);
+
+        StubAmountInput(vm, null); // user cancelled dialog
+
+        await vm.RevaluePortfolioCommand.ExecuteAsync(null);
+
+        await _fundService.DidNotReceive().RevaluePortfolioAsync(Arg.Any<Guid>(), Arg.Any<long>());
+    }
+
+    [Fact]
+    public async Task RevaluePortfolio_ConfirmationDeclined_DoesNotCallService()
+    {
+        var funds = new List<FundListItem> { MakeItem() };
+        _fundService.GetFundsAsync(PortfolioId).Returns(funds);
+        var vm = MakeVm();
+        await vm.LoadFundsCommand.ExecuteAsync(null);
+
+        StubAmountInput(vm, 20000);
+        StubConfirmation(vm, false);
+
+        await vm.RevaluePortfolioCommand.ExecuteAsync(null);
+
+        await _fundService.DidNotReceive().RevaluePortfolioAsync(Arg.Any<Guid>(), Arg.Any<long>());
+    }
+
+    [Fact]
+    public async Task RevaluePortfolio_PortfolioTotalIsZero_SetsHebrewErrorMessage()
+    {
+        var funds = new List<FundListItem> { MakeItem() };
+        _fundService.GetFundsAsync(PortfolioId).Returns(funds);
+        _fundService.RevaluePortfolioAsync(PortfolioId, Arg.Any<long>())
+            .ThrowsAsync(new PortfolioTotalIsZeroException());
+
+        var vm = MakeVm();
+        await vm.LoadFundsCommand.ExecuteAsync(null);
+        StubAmountInput(vm, 20000);
+        StubConfirmation(vm, true);
+
+        await vm.RevaluePortfolioCommand.ExecuteAsync(null);
+
+        Assert.NotEmpty(vm.ErrorMessage);
+        Assert.DoesNotContain("Exception", vm.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task RevaluePortfolio_NegativeAmount_SetsHebrewErrorMessage()
+    {
+        var funds = new List<FundListItem> { MakeItem() };
+        _fundService.GetFundsAsync(PortfolioId).Returns(funds);
+        _fundService.RevaluePortfolioAsync(PortfolioId, Arg.Any<long>())
+            .ThrowsAsync(new NegativeFundAmountException());
+
+        var vm = MakeVm();
+        await vm.LoadFundsCommand.ExecuteAsync(null);
+        StubAmountInput(vm, 20000);
+        StubConfirmation(vm, true);
+
+        await vm.RevaluePortfolioCommand.ExecuteAsync(null);
+
+        Assert.NotEmpty(vm.ErrorMessage);
+        Assert.DoesNotContain("Exception", vm.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task RevaluePortfolio_ClosedPortfolio_SetsHebrewErrorMessage()
+    {
+        var funds = new List<FundListItem> { MakeItem() };
+        _fundService.GetFundsAsync(PortfolioId).Returns(funds);
+        _fundService.RevaluePortfolioAsync(PortfolioId, Arg.Any<long>())
+            .ThrowsAsync(new PortfolioClosedException());
+
+        var vm = MakeVm();
+        await vm.LoadFundsCommand.ExecuteAsync(null);
+        StubAmountInput(vm, 20000);
+        StubConfirmation(vm, true);
+
+        await vm.RevaluePortfolioCommand.ExecuteAsync(null);
+
+        Assert.NotEmpty(vm.ErrorMessage);
+        Assert.DoesNotContain("Exception", vm.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task RevaluePortfolio_TotalMismatch_SetsHebrewErrorMessage()
+    {
+        var funds = new List<FundListItem> { MakeItem() };
+        _fundService.GetFundsAsync(PortfolioId).Returns(funds);
+        _fundService.RevaluePortfolioAsync(PortfolioId, Arg.Any<long>())
+            .ThrowsAsync(new TotalMismatchException());
+
+        var vm = MakeVm();
+        await vm.LoadFundsCommand.ExecuteAsync(null);
+        StubAmountInput(vm, 20000);
+        StubConfirmation(vm, true);
+
+        await vm.RevaluePortfolioCommand.ExecuteAsync(null);
+
+        Assert.NotEmpty(vm.ErrorMessage);
+        Assert.DoesNotContain("Exception", vm.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task RevaluePortfolio_WouldZeroFund_SetsHebrewErrorMessage()
+    {
+        var funds = new List<FundListItem> { MakeItem() };
+        _fundService.GetFundsAsync(PortfolioId).Returns(funds);
+        _fundService.RevaluePortfolioAsync(PortfolioId, Arg.Any<long>())
+            .ThrowsAsync(new RevalueWouldZeroFundException());
+
+        var vm = MakeVm();
+        await vm.LoadFundsCommand.ExecuteAsync(null);
+        StubAmountInput(vm, 1);
+        StubConfirmation(vm, true);
+
+        await vm.RevaluePortfolioCommand.ExecuteAsync(null);
+
+        Assert.NotEmpty(vm.ErrorMessage);
+        Assert.DoesNotContain("Exception", vm.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task RevaluePortfolio_IsLoadingFalse_AfterCompletion()
+    {
+        var funds = new List<FundListItem> { MakeItem() };
+        _fundService.GetFundsAsync(PortfolioId).Returns(funds);
+        var vm = MakeVm();
+        await vm.LoadFundsCommand.ExecuteAsync(null);
+
+        StubAmountInput(vm, 20000);
+        StubConfirmation(vm, true);
+
+        await vm.RevaluePortfolioCommand.ExecuteAsync(null);
+
+        Assert.False(vm.IsLoading);
     }
 
     // -----------------------------------------------------------------------------------------

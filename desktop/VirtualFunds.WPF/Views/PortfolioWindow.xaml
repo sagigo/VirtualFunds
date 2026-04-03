@@ -96,6 +96,11 @@
                         Command="{Binding RenamePortfolioCommand}"
                         IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBooleanConverter}}"
                         Padding="12,4" />
+                <Button Content="עדכון שווי"
+                        Command="{Binding RevaluePortfolioCommand}"
+                        IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBooleanConverter}}"
+                        Padding="12,4"
+                        Margin="8,0,0,0" />
                 <Button Content="מחק תיק"
                         Command="{Binding DeletePortfolioCommand}"
                         IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBooleanConverter}}"

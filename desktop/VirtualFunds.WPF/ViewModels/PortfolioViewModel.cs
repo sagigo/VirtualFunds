@@ -563,6 +563,68 @@ public sealed partial class PortfolioViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Revalues the portfolio total, scaling all fund balances proportionally (E6.11).
+    /// Shows an amount input dialog for the new total, confirms, then calls the service.
+    /// </summary>
+    [RelayCommand]
+    private async Task RevaluePortfolioAsync()
+    {
+        if (Funds.Count == 0)
+        {
+            ErrorMessage = "לא ניתן לעדכן שווי תיק ללא קרנות.";
+            return;
+        }
+
+        var newTotal = await AmountInputRequested!.Invoke("עדכון שווי תיק", PortfolioName); // ! safe: always subscribed by PortfolioWindow before any command runs
+
+        if (newTotal is null)
+            return; // User cancelled.
+
+        // Confirm before revaluing — show old and new totals.
+        var oldTotalAgoras = Funds.Sum(f => f.BalanceAgoras);
+        if (!await ConfirmationRequested!.Invoke( // ! safe: always subscribed by PortfolioWindow before any command runs
+            $"עדכון שווי התיק מ-{MoneyFormatter.FormatAgoras(oldTotalAgoras)} ל-{MoneyFormatter.FormatAgoras(newTotal.Value)}. להמשיך?"))
+            return;
+
+        ErrorMessage = string.Empty;
+        IsLoading = true;
+
+        try
+        {
+            await _fundService.RevaluePortfolioAsync(_portfolioId, newTotal.Value);
+            await LoadFundsAsync();
+        }
+        catch (PortfolioTotalIsZeroException)
+        {
+            ErrorMessage = "לא ניתן לעדכן שווי כאשר סך התיק הוא אפס.";
+        }
+        catch (RevalueWouldZeroFundException)
+        {
+            ErrorMessage = "השווי החדש קיצוני מדי — אחת הקרנות תאבד את חלקה לחלוטין.";
+        }
+        catch (NegativeFundAmountException)
+        {
+            ErrorMessage = "הסכום חייב להיות גדול מאפס.";
+        }
+        catch (PortfolioClosedException)
+        {
+            ErrorMessage = "לא ניתן לבצע פעולה בתיק סגור.";
+        }
+        catch (TotalMismatchException)
+        {
+            ErrorMessage = "שגיאה בחישוב העדכון. נסה שוב.";
+        }
+        catch (Exception)
+        {
+            ErrorMessage = "שגיאה בעדכון שווי התיק. נסה שוב מאוחר יותר.";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    /// <summary>
     /// Navigates back to the portfolio list.
     /// </summary>
     [RelayCommand]

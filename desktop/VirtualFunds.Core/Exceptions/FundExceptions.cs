@@ -63,3 +63,19 @@ public sealed class SameFundTransferException()
 /// </summary>
 public sealed class TotalMismatchException()
     : Exception("Fund total invariant check failed — possible bug in delta computation.");
+
+/// <summary>
+/// A revalue operation was attempted but the current portfolio total is zero,
+/// so proportional scaling cannot be computed.
+/// Maps to RPC error token <c>ERR_VALIDATION:PORTFOLIO_TOTAL_IS_ZERO</c>.
+/// </summary>
+public sealed class PortfolioTotalIsZeroException()
+    : Exception("Cannot revalue a portfolio with zero total balance.");
+
+/// <summary>
+/// A revalue operation would reduce a fund's balance to zero, destroying its ownership share.
+/// The new total is too extreme relative to the current fund distribution.
+/// This is a client-side validation — the RPC is never called.
+/// </summary>
+public sealed class RevalueWouldZeroFundException()
+    : Exception("Revalue would reduce a fund balance to zero.");

@@ -95,4 +95,21 @@ public interface IFundService
     /// <exception cref="Exceptions.InsufficientFundBalanceException">The source fund balance is insufficient.</exception>
     /// <exception cref="Exceptions.SameFundTransferException">Source and destination are the same fund.</exception>
     Task TransferAsync(Guid portfolioId, Guid sourceFundId, Guid destinationFundId, long amountAgoras);
+
+    // -----------------------------------------------------------------------------------------
+    // Portfolio-level money operations (E6.11)
+    // -----------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Revalues the portfolio total, scaling all fund balances proportionally (E6.11).
+    /// The operation preserves ownership proportions as closely as possible using
+    /// banker's rounding with deterministic remainder distribution.
+    /// The service fetches current fund state internally to ensure freshness.
+    /// </summary>
+    /// <param name="portfolioId">The portfolio to revalue.</param>
+    /// <param name="newTotalAgoras">The desired new total in agoras (must be &gt; 0).</param>
+    /// <exception cref="Exceptions.NegativeFundAmountException">New total is not positive.</exception>
+    /// <exception cref="Exceptions.PortfolioTotalIsZeroException">Current total is zero (cannot compute proportions).</exception>
+    /// <exception cref="Exceptions.PortfolioClosedException">The portfolio has been closed.</exception>
+    Task RevaluePortfolioAsync(Guid portfolioId, long newTotalAgoras);
 }

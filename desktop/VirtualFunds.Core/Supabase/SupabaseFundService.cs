@@ -277,6 +277,131 @@ public sealed class SupabaseFundService : IFundService
     }
 
     // -----------------------------------------------------------------------------------------
+    // Portfolio-level money operations (E6.11)
+    // -----------------------------------------------------------------------------------------
+
+    /// <inheritdoc />
+    public async Task RevaluePortfolioAsync(Guid portfolioId, long newTotalAgoras)
+    {
+        if (newTotalAgoras <= 0)
+            throw new NegativeFundAmountException();
+
+        // Step 1: Fetch current fund state (ensures freshness).
+        var funds = await GetFundsAsync(portfolioId).ConfigureAwait(false);
+
+        if (funds.Count == 0)
+            throw new PortfolioTotalIsZeroException();
+
+        // Step 2: Compute old total.
+        var oldTotalAgoras = funds.Sum(f => f.BalanceAgoras);
+
+        if (oldTotalAgoras == 0)
+            throw new PortfolioTotalIsZeroException();
+
+        // Step 3: No-op when totals are equal — don't log anything.
+        if (newTotalAgoras == oldTotalAgoras)
+            return;
+
+        // Step 4: Compute provisional new balances using banker's rounding.
+        // Uses decimal arithmetic to avoid floating-point precision issues.
+        var workItems = funds
+            .Select(f => new
+            {
+                f.FundId,
+                OldBalance = f.BalanceAgoras,
+                ProvisionalNewBalance = (long)Math.Round(
+                    (decimal)newTotalAgoras * f.BalanceAgoras / oldTotalAgoras,
+                    0,
+                    MidpointRounding.ToEven),
+            })
+            .ToList();
+
+        // Step 5–6: Compute remainder.
+        var provisionalSum = workItems.Sum(w => w.ProvisionalNewBalance);
+        var remainder = newTotalAgoras - provisionalSum;
+
+        // Step 7: Sort by fund_id ascending for deterministic remainder distribution.
+        var sorted = workItems.OrderBy(w => w.FundId).ToList();
+
+        // Build mutable list of final balances.
+        var finalBalances = sorted
+            .Select(w => (w.FundId, w.OldBalance, NewBalance: w.ProvisionalNewBalance))
+            .ToList();
+
+        // Step 8: Fix remainder deterministically.
+        if (remainder > 0)
+        {
+            for (var i = 0; i < (int)remainder; i++)
+            {
+                var item = finalBalances[i];
+                finalBalances[i] = (item.FundId, item.OldBalance, item.NewBalance + 1);
+            }
+        }
+        else if (remainder < 0)
+        {
+            var absRemainder = (int)(-remainder);
+            var adjusted = 0;
+            for (var i = 0; i < finalBalances.Count && adjusted < absRemainder; i++)
+            {
+                if (finalBalances[i].NewBalance > 0)
+                {
+                    var item = finalBalances[i];
+                    finalBalances[i] = (item.FundId, item.OldBalance, item.NewBalance - 1);
+                    adjusted++;
+                }
+            }
+        }
+
+        // Validate: block if any fund with a non-zero balance would be reduced to zero.
+        // A zero-balance fund can never recover via future revaluations (0 * ratio = 0).
+        if (finalBalances.Any(fb => fb.OldBalance > 0 && fb.NewBalance == 0))
+            throw new RevalueWouldZeroFundException();
+
+        // Steps 9–10: Compute deltas and build detail rows for non-zero deltas.
+        var operationId = OperationIdGenerator.NewOperationId();
+        var summaryTransactionId = OperationIdGenerator.NewTransactionId();
+
+        var details = finalBalances
+            .Select(fb => new { Delta = fb.NewBalance - fb.OldBalance, fb.FundId })
+            .Where(d => d.Delta != 0)
+            .Select(d => new
+            {
+                transaction_id = OperationIdGenerator.NewTransactionId(),
+                transaction_type = d.Delta > 0 ? "RevaluationCredit" : "RevaluationDebit",
+                fund_id = d.FundId,
+                amount_agoras = d.Delta,
+            })
+            .ToArray();
+
+        // All deltas zero after rounding — treat as no-op.
+        if (details.Length == 0)
+            return;
+
+        // Steps 11–12: Call RPC.
+        var summaryText = $"Revalue portfolio total from {oldTotalAgoras} to {newTotalAgoras}";
+
+        try
+        {
+            await _client.Rpc(
+                "rpc_commit_fund_operation",
+                new
+                {
+                    p_portfolio_id = portfolioId,
+                    p_operation_id = operationId,
+                    p_summary_transaction_id = summaryTransactionId,
+                    p_summary_transaction_type = "PortfolioRevalued",
+                    p_summary_text = summaryText,
+                    p_details = details,
+                }).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (IsRpcException(ex))
+        {
+            ThrowForRpcError(ex);
+            throw;
+        }
+    }
+
+    // -----------------------------------------------------------------------------------------
     // Error mapping
     // -----------------------------------------------------------------------------------------
 
@@ -317,6 +442,9 @@ public sealed class SupabaseFundService : IFundService
 
         if (message.Contains("ERR_VALIDATION:PORTFOLIO_CLOSED"))
             throw new PortfolioClosedException();
+
+        if (message.Contains("ERR_VALIDATION:PORTFOLIO_TOTAL_IS_ZERO"))
+            throw new PortfolioTotalIsZeroException();
 
         if (message.Contains("ERR_NOT_FOUND"))
             throw new FundNotFoundException();
