@@ -38,6 +38,40 @@
                        VerticalAlignment="Center" />
         </DockPanel>
 
+        <!-- Fund operations toolbar — operates on the selected fund in the list -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+            <Button Content="הפקדה"
+                    Command="{Binding DepositCommand}"
+                    CommandParameter="{Binding SelectedFund}"
+                    IsEnabled="{Binding CanExecuteFundOperation}"
+                    Padding="10,4" />
+            <Button Content="משיכה"
+                    Command="{Binding WithdrawCommand}"
+                    CommandParameter="{Binding SelectedFund}"
+                    IsEnabled="{Binding CanExecuteFundOperation}"
+                    Padding="10,4"
+                    Margin="4,0,0,0" />
+            <Button Content="העברה"
+                    Command="{Binding TransferCommand}"
+                    CommandParameter="{Binding SelectedFund}"
+                    IsEnabled="{Binding CanExecuteFundOperation}"
+                    Padding="10,4"
+                    Margin="4,0,0,0" />
+            <Separator Width="1" Margin="8,2" />
+            <Button Content="שנה שם"
+                    Command="{Binding RenameFundCommand}"
+                    CommandParameter="{Binding SelectedFund}"
+                    IsEnabled="{Binding CanExecuteFundOperation}"
+                    Padding="10,4"
+                    Margin="4,0,0,0" />
+            <Button Content="מחק קרן"
+                    Command="{Binding DeleteFundCommand}"
+                    CommandParameter="{Binding SelectedFund}"
+                    IsEnabled="{Binding CanExecuteFundOperation}"
+                    Padding="10,4"
+                    Margin="4,0,0,0" />
+        </StackPanel>
+
         <!-- Error message -->
         <TextBlock DockPanel.Dock="Top"
                    Text="{Binding ErrorMessage}"
@@ -116,6 +150,19 @@
                             <!-- Right-click context menu -->
                             <DockPanel.ContextMenu>
                                 <ContextMenu>
+                                    <MenuItem Header="הפקדה"
+                                              Command="{Binding DataContext.DepositCommand,
+                                                  Source={x:Reference FundListBox}}"
+                                              CommandParameter="{Binding}" />
+                                    <MenuItem Header="משיכה"
+                                              Command="{Binding DataContext.WithdrawCommand,
+                                                  Source={x:Reference FundListBox}}"
+                                              CommandParameter="{Binding}" />
+                                    <MenuItem Header="העברה מקרן זו..."
+                                              Command="{Binding DataContext.TransferCommand,
+                                                  Source={x:Reference FundListBox}}"
+                                              CommandParameter="{Binding}" />
+                                    <Separator />
                                     <MenuItem Header="שנה שם"
                                               Command="{Binding DataContext.RenameFundCommand,
                                                   Source={x:Reference FundListBox}}"

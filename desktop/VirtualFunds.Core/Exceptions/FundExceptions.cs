@@ -41,3 +41,25 @@ public sealed class FundHasScheduledDepositException()
 /// </summary>
 public sealed class FundNotFoundException()
     : Exception("Fund not found.");
+
+/// <summary>
+/// A fund operation would result in a negative balance.
+/// Maps to RPC error token <c>ERR_INVARIANT:NEGATIVE_BALANCE</c>.
+/// </summary>
+public sealed class InsufficientFundBalanceException()
+    : Exception("Insufficient fund balance for this operation.");
+
+/// <summary>
+/// A transfer was attempted where source and destination are the same fund.
+/// This is a client-side validation — the RPC is never called.
+/// </summary>
+public sealed class SameFundTransferException()
+    : Exception("Source and destination funds must be different.");
+
+/// <summary>
+/// The server detected that fund balance totals are inconsistent after an operation.
+/// This indicates a bug in client-side delta computation and should never happen in practice.
+/// Maps to RPC error token <c>ERR_INVARIANT:TOTAL_MISMATCH</c>.
+/// </summary>
+public sealed class TotalMismatchException()
+    : Exception("Fund total invariant check failed — possible bug in delta computation.");

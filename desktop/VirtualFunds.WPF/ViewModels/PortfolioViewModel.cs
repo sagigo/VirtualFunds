@@ -49,6 +49,20 @@ public sealed partial class PortfolioViewModel : ObservableObject
     public event Func<string, Task<bool>>? ConfirmationRequested;
 
     /// <summary>
+    /// Raised when the ViewModel needs a positive shekel amount from the user (deposit / withdrawal).
+    /// Parameters: (dialog title, fund name for display).
+    /// Returns: the amount in agoras, or <c>null</c> if the user cancelled.
+    /// </summary>
+    public event Func<string, string, Task<long?>>? AmountInputRequested;
+
+    /// <summary>
+    /// Raised when the ViewModel needs transfer input from the user (E6.10).
+    /// Parameters: (source fund, list of other funds).
+    /// Returns: a tuple of (destinationFundId, amountAgoras), or <c>null</c> if the user cancelled.
+    /// </summary>
+    public event Func<FundListItem, IReadOnlyList<FundListItem>, Task<(Guid DestinationFundId, long AmountAgoras)?>>? TransferRequested;
+
+    /// <summary>
     /// Raised when the user wants to go back to the portfolio list.
     /// The View should navigate to MainWindow.
     /// </summary>
@@ -64,10 +78,12 @@ public sealed partial class PortfolioViewModel : ObservableObject
 
     /// <summary>The currently selected fund in the list.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanExecuteFundOperation))]
     private FundListItem? _selectedFund;
 
     /// <summary>True while a service operation is in progress.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanExecuteFundOperation))]
     private bool _isLoading;
 
     /// <summary>Hebrew error message, or empty when there is no error.</summary>
@@ -88,6 +104,9 @@ public sealed partial class PortfolioViewModel : ObservableObject
     /// </summary>
     [ObservableProperty]
     private string _formattedTotal = MoneyFormatter.FormatAgoras(0);
+
+    /// <summary>True when a fund is selected and no operation is in progress — enables fund toolbar buttons.</summary>
+    public bool CanExecuteFundOperation => !IsLoading && SelectedFund != null;
 
     // -----------------------------------------------------------------------------------------
 
@@ -156,6 +175,13 @@ public sealed partial class PortfolioViewModel : ObservableObject
 
         var (name, amountAgoras) = input.Value;
 
+        // Confirm before creating — show the initial balance when provided.
+        var confirmMsg = amountAgoras > 0
+            ? $"יצירת קרן \"{name}\" עם יתרה התחלתית של {MoneyFormatter.FormatAgoras(amountAgoras)}. להמשיך?"
+            : $"יצירת קרן \"{name}\". להמשיך?";
+        if (!await ConfirmationRequested!.Invoke(confirmMsg)) // ! safe: always subscribed by PortfolioWindow before any command runs
+            return;
+
         ErrorMessage = string.Empty;
         IsLoading = true;
 
@@ -200,6 +226,10 @@ public sealed partial class PortfolioViewModel : ObservableObject
 
         if (newName is null)
             return; // User cancelled.
+
+        // Confirm before renaming — show both old and new name.
+        if (!await ConfirmationRequested!.Invoke($"שינוי שם הקרן מ\"{fund.Name}\" ל\"{newName}\". להמשיך?")) // ! safe: always subscribed by PortfolioWindow before any command runs
+            return;
 
         ErrorMessage = string.Empty;
         IsLoading = true;
@@ -279,6 +309,174 @@ public sealed partial class PortfolioViewModel : ObservableObject
             IsLoading = false;
         }
     }
+
+    // -----------------------------------------------------------------------------------------
+    // Fund money operations (E6.8–E6.10)
+    // -----------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Deposits money into a fund (E6.8). Shows an amount input dialog, calls the service, reloads.
+    /// </summary>
+    [RelayCommand]
+    private async Task DepositAsync(FundListItem fund)
+    {
+        var amount = await AmountInputRequested!.Invoke("הפקדה לקרן", fund.Name);
+
+        if (amount is null)
+            return; // User cancelled.
+
+        // Confirm before depositing — show the exact amount and target fund.
+        if (!await ConfirmationRequested!.Invoke($"הפקדה של {MoneyFormatter.FormatAgoras(amount.Value)} לקרן \"{fund.Name}\". להמשיך?")) // ! safe: always subscribed by PortfolioWindow before any command runs
+            return;
+
+        ErrorMessage = string.Empty;
+        IsLoading = true;
+
+        try
+        {
+            await _fundService.DepositAsync(_portfolioId, fund.FundId, amount.Value);
+            await LoadFundsAsync();
+        }
+        catch (NegativeFundAmountException)
+        {
+            ErrorMessage = "הסכום חייב להיות גדול מאפס.";
+        }
+        catch (PortfolioClosedException)
+        {
+            ErrorMessage = "לא ניתן לבצע פעולה בתיק סגור.";
+        }
+        catch (FundNotFoundException)
+        {
+            ErrorMessage = "הקרן לא נמצאה.";
+        }
+        catch (Exception)
+        {
+            ErrorMessage = "שגיאה בהפקדה. נסה שוב מאוחר יותר.";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Withdraws money from a fund (E6.9). Shows an amount input dialog, calls the service, reloads.
+    /// </summary>
+    [RelayCommand]
+    private async Task WithdrawAsync(FundListItem fund)
+    {
+        var amount = await AmountInputRequested!.Invoke("משיכה מקרן", fund.Name);
+
+        if (amount is null)
+            return; // User cancelled.
+
+        // Confirm before withdrawing — show the exact amount and source fund.
+        if (!await ConfirmationRequested!.Invoke($"משיכה של {MoneyFormatter.FormatAgoras(amount.Value)} מקרן \"{fund.Name}\". להמשיך?")) // ! safe: always subscribed by PortfolioWindow before any command runs
+            return;
+
+        ErrorMessage = string.Empty;
+        IsLoading = true;
+
+        try
+        {
+            await _fundService.WithdrawAsync(_portfolioId, fund.FundId, amount.Value);
+            await LoadFundsAsync();
+        }
+        catch (InsufficientFundBalanceException)
+        {
+            ErrorMessage = "אין מספיק יתרה בקרן לביצוע המשיכה.";
+        }
+        catch (NegativeFundAmountException)
+        {
+            ErrorMessage = "הסכום חייב להיות גדול מאפס.";
+        }
+        catch (PortfolioClosedException)
+        {
+            ErrorMessage = "לא ניתן לבצע פעולה בתיק סגור.";
+        }
+        catch (FundNotFoundException)
+        {
+            ErrorMessage = "הקרן לא נמצאה.";
+        }
+        catch (Exception)
+        {
+            ErrorMessage = "שגיאה במשיכה. נסה שוב מאוחר יותר.";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Transfers money between two funds (E6.10). Shows a transfer dialog, calls the service, reloads.
+    /// </summary>
+    [RelayCommand]
+    private async Task TransferAsync(FundListItem sourceFund)
+    {
+        // Build the list of destination candidates (all funds except the source).
+        var otherFunds = Funds.Where(f => f.FundId != sourceFund.FundId).ToList();
+
+        if (otherFunds.Count == 0)
+        {
+            ErrorMessage = "נדרשות לפחות שתי קרנות לביצוע העברה.";
+            return;
+        }
+
+        var result = await TransferRequested!.Invoke(sourceFund, otherFunds);
+
+        if (result is null)
+            return; // User cancelled.
+
+        var (destinationFundId, amountAgoras) = result.Value;
+
+        // Confirm before transferring — show amount, source, and destination fund names.
+        var destFund = otherFunds.First(f => f.FundId == destinationFundId);
+        if (!await ConfirmationRequested!.Invoke( // ! safe: always subscribed by PortfolioWindow before any command runs
+            $"העברה של {MoneyFormatter.FormatAgoras(amountAgoras)} מקרן \"{sourceFund.Name}\" לקרן \"{destFund.Name}\". להמשיך?"))
+            return;
+
+        ErrorMessage = string.Empty;
+        IsLoading = true;
+
+        try
+        {
+            await _fundService.TransferAsync(_portfolioId, sourceFund.FundId, destinationFundId, amountAgoras);
+            await LoadFundsAsync();
+        }
+        catch (InsufficientFundBalanceException)
+        {
+            ErrorMessage = "אין מספיק יתרה בקרן המקור לביצוע ההעברה.";
+        }
+        catch (SameFundTransferException)
+        {
+            ErrorMessage = "לא ניתן להעביר מקרן לעצמה.";
+        }
+        catch (NegativeFundAmountException)
+        {
+            ErrorMessage = "הסכום חייב להיות גדול מאפס.";
+        }
+        catch (PortfolioClosedException)
+        {
+            ErrorMessage = "לא ניתן לבצע פעולה בתיק סגור.";
+        }
+        catch (FundNotFoundException)
+        {
+            ErrorMessage = "אחת הקרנות לא נמצאה.";
+        }
+        catch (Exception)
+        {
+            ErrorMessage = "שגיאה בהעברה. נסה שוב מאוחר יותר.";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Portfolio-level commands
+    // -----------------------------------------------------------------------------------------
 
     /// <summary>
     /// Renames this portfolio. Shows a name input dialog pre-filled with the current name (E5.4).

@@ -1,4 +1,5 @@
 using System.Windows;
+using VirtualFunds.Core.Models;
 using VirtualFunds.WPF.ViewModels;
 
 namespace VirtualFunds.WPF.Views;
@@ -32,6 +33,8 @@ public partial class PortfolioWindow : Window
         _viewModel.NameInputRequested += OnNameInputRequested;
         _viewModel.FundCreateRequested += OnFundCreateRequested;
         _viewModel.ConfirmationRequested += OnConfirmationRequested;
+        _viewModel.AmountInputRequested += OnAmountInputRequested;
+        _viewModel.TransferRequested += OnTransferRequested;
         _viewModel.BackRequested += OnBackRequested;
 
         // Load funds when the window is shown.
@@ -99,6 +102,51 @@ public partial class PortfolioWindow : Window
             MessageBoxResult.No);
 
         return Task.FromResult(result == MessageBoxResult.Yes);
+    }
+
+    /// <summary>
+    /// Shows an <see cref="AmountInputDialog"/> for the user to enter a shekel amount (deposit / withdrawal).
+    /// </summary>
+    /// <param name="title">The dialog title (e.g., "הפקדה לקרן").</param>
+    /// <param name="fundName">The fund name shown in the dialog title for context.</param>
+    /// <returns>The amount in agoras, or <c>null</c> if the user cancelled.</returns>
+    private Task<long?> OnAmountInputRequested(string title, string fundName)
+    {
+        var dialog = new AmountInputDialog
+        {
+            Owner = this,
+            Title = $"{title} — {fundName}",
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            return Task.FromResult<long?>(dialog.AmountAgoras);
+        }
+
+        return Task.FromResult<long?>(null);
+    }
+
+    /// <summary>
+    /// Shows a <see cref="TransferDialog"/> for the user to pick a destination fund and enter an amount.
+    /// </summary>
+    /// <param name="sourceFund">The source fund (fixed, shown as read-only).</param>
+    /// <param name="otherFunds">The list of eligible destination funds.</param>
+    /// <returns>A tuple of (destinationFundId, amountAgoras), or <c>null</c> if the user cancelled.</returns>
+    private Task<(Guid DestinationFundId, long AmountAgoras)?> OnTransferRequested(
+        FundListItem sourceFund, IReadOnlyList<FundListItem> otherFunds)
+    {
+        var dialog = new TransferDialog(sourceFund, otherFunds)
+        {
+            Owner = this,
+        };
+
+        if (dialog.ShowDialog() == true && dialog.DestinationFund is not null)
+        {
+            return Task.FromResult<(Guid DestinationFundId, long AmountAgoras)?>(
+                (dialog.DestinationFund.FundId, dialog.AmountAgoras));
+        }
+
+        return Task.FromResult<(Guid DestinationFundId, long AmountAgoras)?>(null);
     }
 
     /// <summary>

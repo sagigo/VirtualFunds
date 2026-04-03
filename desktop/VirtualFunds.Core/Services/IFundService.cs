@@ -53,4 +53,46 @@ public interface IFundService
     /// <exception cref="Exceptions.PortfolioClosedException">The portfolio has been closed.</exception>
     /// <exception cref="Exceptions.FundNotFoundException">Fund not found in the portfolio.</exception>
     Task DeleteFundAsync(Guid portfolioId, Guid fundId);
+
+    // -----------------------------------------------------------------------------------------
+    // Fund money operations (E6.7–E6.10)
+    // -----------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Deposits money into a single fund, increasing the portfolio total (E6.8).
+    /// </summary>
+    /// <param name="portfolioId">The portfolio that owns the fund.</param>
+    /// <param name="fundId">The fund to deposit into.</param>
+    /// <param name="amountAgoras">The amount to deposit in agoras (must be &gt; 0).</param>
+    /// <exception cref="Exceptions.PortfolioClosedException">The portfolio has been closed.</exception>
+    /// <exception cref="Exceptions.FundNotFoundException">Fund not found in the portfolio.</exception>
+    /// <exception cref="Exceptions.NegativeFundAmountException">Amount is not positive.</exception>
+    Task DepositAsync(Guid portfolioId, Guid fundId, long amountAgoras);
+
+    /// <summary>
+    /// Withdraws money from a single fund, decreasing the portfolio total (E6.9).
+    /// The fund must have sufficient balance.
+    /// </summary>
+    /// <param name="portfolioId">The portfolio that owns the fund.</param>
+    /// <param name="fundId">The fund to withdraw from.</param>
+    /// <param name="amountAgoras">The amount to withdraw in agoras (must be &gt; 0).</param>
+    /// <exception cref="Exceptions.PortfolioClosedException">The portfolio has been closed.</exception>
+    /// <exception cref="Exceptions.FundNotFoundException">Fund not found in the portfolio.</exception>
+    /// <exception cref="Exceptions.NegativeFundAmountException">Amount is not positive.</exception>
+    /// <exception cref="Exceptions.InsufficientFundBalanceException">The fund balance is insufficient.</exception>
+    Task WithdrawAsync(Guid portfolioId, Guid fundId, long amountAgoras);
+
+    /// <summary>
+    /// Transfers money between two funds in the same portfolio without changing the total (E6.10).
+    /// </summary>
+    /// <param name="portfolioId">The portfolio that owns both funds.</param>
+    /// <param name="sourceFundId">The fund to transfer from.</param>
+    /// <param name="destinationFundId">The fund to transfer to.</param>
+    /// <param name="amountAgoras">The amount to transfer in agoras (must be &gt; 0).</param>
+    /// <exception cref="Exceptions.PortfolioClosedException">The portfolio has been closed.</exception>
+    /// <exception cref="Exceptions.FundNotFoundException">A referenced fund was not found.</exception>
+    /// <exception cref="Exceptions.NegativeFundAmountException">Amount is not positive.</exception>
+    /// <exception cref="Exceptions.InsufficientFundBalanceException">The source fund balance is insufficient.</exception>
+    /// <exception cref="Exceptions.SameFundTransferException">Source and destination are the same fund.</exception>
+    Task TransferAsync(Guid portfolioId, Guid sourceFundId, Guid destinationFundId, long amountAgoras);
 }

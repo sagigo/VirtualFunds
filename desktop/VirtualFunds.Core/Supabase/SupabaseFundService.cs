@@ -7,8 +7,9 @@ using VirtualFunds.Core.Utilities;
 namespace VirtualFunds.Core.Supabase;
 
 /// <summary>
-/// Supabase-backed implementation of <see cref="IFundService"/> (PR-5, E5.6–E5.8).
-/// Reads funds via Postgrest and mutates via RPC functions.
+/// Supabase-backed implementation of <see cref="IFundService"/> (PR-5, E5.6–E5.8, E6.7–E6.10).
+/// Reads funds via Postgrest. Structural mutations use dedicated RPCs; money operations
+/// (deposit, withdraw, transfer) use the generic <c>rpc_commit_fund_operation</c> engine.
 /// </summary>
 public sealed class SupabaseFundService : IFundService
 {
@@ -135,6 +136,147 @@ public sealed class SupabaseFundService : IFundService
     }
 
     // -----------------------------------------------------------------------------------------
+    // Fund money operations (E6.7–E6.10)
+    // -----------------------------------------------------------------------------------------
+
+    /// <inheritdoc />
+    public async Task DepositAsync(Guid portfolioId, Guid fundId, long amountAgoras)
+    {
+        if (amountAgoras <= 0)
+            throw new NegativeFundAmountException();
+
+        var operationId = OperationIdGenerator.NewOperationId();
+        var summaryTransactionId = OperationIdGenerator.NewTransactionId();
+        var detailTransactionId = OperationIdGenerator.NewTransactionId();
+
+        var details = new[]
+        {
+            new
+            {
+                transaction_id = detailTransactionId,
+                transaction_type = "FundDeposit",
+                fund_id = fundId,
+                amount_agoras = amountAgoras,
+            },
+        };
+
+        try
+        {
+            await _client.Rpc(
+                "rpc_commit_fund_operation",
+                new
+                {
+                    p_portfolio_id = portfolioId,
+                    p_operation_id = operationId,
+                    p_summary_transaction_id = summaryTransactionId,
+                    p_summary_transaction_type = "FundDeposit",
+                    p_summary_text = "Deposit into fund",
+                    p_details = details,
+                }).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (IsRpcException(ex))
+        {
+            ThrowForRpcError(ex);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task WithdrawAsync(Guid portfolioId, Guid fundId, long amountAgoras)
+    {
+        if (amountAgoras <= 0)
+            throw new NegativeFundAmountException();
+
+        var operationId = OperationIdGenerator.NewOperationId();
+        var summaryTransactionId = OperationIdGenerator.NewTransactionId();
+        var detailTransactionId = OperationIdGenerator.NewTransactionId();
+
+        var details = new[]
+        {
+            new
+            {
+                transaction_id = detailTransactionId,
+                transaction_type = "FundWithdrawal",
+                fund_id = fundId,
+                amount_agoras = -amountAgoras, // Negative delta — reduces balance.
+            },
+        };
+
+        try
+        {
+            await _client.Rpc(
+                "rpc_commit_fund_operation",
+                new
+                {
+                    p_portfolio_id = portfolioId,
+                    p_operation_id = operationId,
+                    p_summary_transaction_id = summaryTransactionId,
+                    p_summary_transaction_type = "FundWithdrawal",
+                    p_summary_text = "Withdrawal from fund",
+                    p_details = details,
+                }).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (IsRpcException(ex))
+        {
+            ThrowForRpcError(ex);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task TransferAsync(Guid portfolioId, Guid sourceFundId, Guid destinationFundId, long amountAgoras)
+    {
+        if (sourceFundId == destinationFundId)
+            throw new SameFundTransferException();
+
+        if (amountAgoras <= 0)
+            throw new NegativeFundAmountException();
+
+        var operationId = OperationIdGenerator.NewOperationId();
+        var summaryTransactionId = OperationIdGenerator.NewTransactionId();
+        var debitTransactionId = OperationIdGenerator.NewTransactionId();
+        var creditTransactionId = OperationIdGenerator.NewTransactionId();
+
+        var details = new[]
+        {
+            new
+            {
+                transaction_id = debitTransactionId,
+                transaction_type = "TransferDebit",
+                fund_id = sourceFundId,
+                amount_agoras = -amountAgoras, // Source loses money.
+            },
+            new
+            {
+                transaction_id = creditTransactionId,
+                transaction_type = "TransferCredit",
+                fund_id = destinationFundId,
+                amount_agoras = amountAgoras, // Destination gains money.
+            },
+        };
+
+        try
+        {
+            await _client.Rpc(
+                "rpc_commit_fund_operation",
+                new
+                {
+                    p_portfolio_id = portfolioId,
+                    p_operation_id = operationId,
+                    p_summary_transaction_id = summaryTransactionId,
+                    p_summary_transaction_type = "Transfer",
+                    p_summary_text = "Transfer between funds",
+                    p_details = details,
+                }).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (IsRpcException(ex))
+        {
+            ThrowForRpcError(ex);
+            throw;
+        }
+    }
+
+    // -----------------------------------------------------------------------------------------
     // Error mapping
     // -----------------------------------------------------------------------------------------
 
@@ -145,7 +287,9 @@ public sealed class SupabaseFundService : IFundService
     /// </summary>
     private static bool IsRpcException(Exception ex)
     {
-        return ex.Message.Contains("ERR_") || ex.InnerException?.Message.Contains("ERR_") == true;
+        var msg = ex.Message;
+        var inner = ex.InnerException?.Message;
+        return msg.Contains("ERR_") || inner?.Contains("ERR_") == true;
     }
 
     /// <summary>
@@ -176,6 +320,12 @@ public sealed class SupabaseFundService : IFundService
 
         if (message.Contains("ERR_NOT_FOUND"))
             throw new FundNotFoundException();
+
+        if (message.Contains("ERR_INVARIANT:NEGATIVE_BALANCE"))
+            throw new InsufficientFundBalanceException();
+
+        if (message.Contains("ERR_INVARIANT:TOTAL_MISMATCH"))
+            throw new TotalMismatchException();
 
         // Unknown RPC error — re-throw the original exception.
         throw ex;
