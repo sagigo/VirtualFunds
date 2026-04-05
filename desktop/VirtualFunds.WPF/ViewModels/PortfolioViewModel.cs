@@ -23,6 +23,7 @@ public sealed partial class PortfolioViewModel : ObservableObject
     private readonly IFundService _fundService;
     private readonly IPortfolioService _portfolioService;
     private readonly Guid _portfolioId;
+    private readonly TransactionHistoryViewModel _historyViewModel;
 
     // -----------------------------------------------------------------------------------------
     // Events — the View code-behind subscribes to handle UI-specific concerns.
@@ -115,16 +116,26 @@ public sealed partial class PortfolioViewModel : ObservableObject
     /// <param name="portfolioService">The portfolio service, used for rename and delete (injected from DI).</param>
     /// <param name="portfolioId">The ID of the portfolio to display.</param>
     /// <param name="portfolioName">The display name of the portfolio.</param>
-    public PortfolioViewModel(IFundService fundService, IPortfolioService portfolioService, Guid portfolioId, string portfolioName)
+    /// <param name="historyViewModel">The history sub-ViewModel for the History tab (PR-7).</param>
+    public PortfolioViewModel(
+        IFundService fundService,
+        IPortfolioService portfolioService,
+        Guid portfolioId,
+        string portfolioName,
+        TransactionHistoryViewModel historyViewModel)
     {
         _fundService = fundService;
         _portfolioService = portfolioService;
         _portfolioId = portfolioId;
         _portfolioName = portfolioName;
+        _historyViewModel = historyViewModel;
     }
 
     /// <summary>The portfolio ID this ViewModel operates on.</summary>
     public Guid PortfolioId => _portfolioId;
+
+    /// <summary>The sub-ViewModel for the transaction history tab (PR-7).</summary>
+    public TransactionHistoryViewModel HistoryViewModel => _historyViewModel;
 
     // -----------------------------------------------------------------------------------------
     // Commands
@@ -150,6 +161,11 @@ public sealed partial class PortfolioViewModel : ObservableObject
             // Compute formatted total from the loaded funds.
             var totalAgoras = result.Sum(f => f.BalanceAgoras);
             FormattedTotal = MoneyFormatter.FormatAgoras(totalAgoras);
+
+            // Refresh history panel to show any new transactions from the operation
+            // that triggered this reload. Fire-and-forget — history VM handles its own
+            // loading state and errors independently.
+            _ = _historyViewModel.LoadHistoryCommand.ExecuteAsync(null);
         }
         catch (Exception)
         {
@@ -497,6 +513,9 @@ public sealed partial class PortfolioViewModel : ObservableObject
         {
             await _portfolioService.RenamePortfolioAsync(_portfolioId, newName);
             PortfolioName = newName;
+
+            // Refresh history — rename creates a PortfolioRenamed transaction.
+            _ = _historyViewModel.LoadHistoryCommand.ExecuteAsync(null);
         }
         catch (EmptyPortfolioNameException)
         {

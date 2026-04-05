@@ -1,14 +1,16 @@
 using System.Windows;
+using Microsoft.Win32;
 using VirtualFunds.Core.Models;
 using VirtualFunds.WPF.ViewModels;
 
 namespace VirtualFunds.WPF.Views;
 
 /// <summary>
-/// Portfolio detail window — shows the funds within a portfolio (PR-5).
+/// Portfolio detail window — shows funds and transaction history side by side (PR-5, PR-7).
 /// <para>
-/// Displays a list of funds with name, balance, and allocation percentage.
-/// Right-click context menu provides Rename and Delete actions.
+/// The left panel (RTL right) shows the fund list with operations.
+/// The right panel (RTL left) shows the transaction history with filters and CSV export.
+/// A draggable <see cref="System.Windows.Controls.GridSplitter"/> lets the user resize each panel.
 /// </para>
 /// </summary>
 public partial class PortfolioWindow : Window
@@ -37,7 +39,11 @@ public partial class PortfolioWindow : Window
         _viewModel.TransferRequested += OnTransferRequested;
         _viewModel.BackRequested += OnBackRequested;
 
-        // Load funds when the window is shown.
+        // Subscribe to history VM events.
+        _viewModel.HistoryViewModel.CsvExportPathRequested += OnCsvExportPathRequested;
+
+        // Load funds when the window is shown. LoadFundsAsync also triggers
+        // a history reload, so both panels get populated.
         Loaded += async (_, _) => await _viewModel.LoadFundsCommand.ExecuteAsync(null);
     }
 
@@ -147,6 +153,26 @@ public partial class PortfolioWindow : Window
         }
 
         return Task.FromResult<(Guid DestinationFundId, long AmountAgoras)?>(null);
+    }
+
+    /// <summary>
+    /// Shows a <see cref="SaveFileDialog"/> for the user to choose a CSV export file path.
+    /// </summary>
+    /// <returns>The chosen file path, or <c>null</c> if the user cancelled.</returns>
+    private Task<string?> OnCsvExportPathRequested()
+    {
+        var dialog = new SaveFileDialog
+        {
+            Filter = "CSV files (*.csv)|*.csv",
+            DefaultExt = ".csv",
+            FileName = $"היסטוריה_{_viewModel.PortfolioName}_{DateTime.Now:yyyyMMdd}",
+        };
+
+        var result = dialog.ShowDialog(this) == true
+            ? dialog.FileName
+            : null;
+
+        return Task.FromResult(result);
     }
 
     /// <summary>

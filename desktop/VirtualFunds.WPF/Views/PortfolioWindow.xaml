@@ -5,14 +5,14 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="{Binding PortfolioName, StringFormat='קרנות וירטואליות — {0}'}"
-        Height="500" Width="700"
+        Height="600" Width="1100"
         WindowStartupLocation="CenterScreen"
         FlowDirection="RightToLeft">
 
     <DockPanel Margin="16">
 
         <!-- Top: Header with back button, portfolio name, total, and create fund button -->
-        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
             <Button Content="← חזרה"
                     Command="{Binding GoBackCommand}"
                     HorizontalAlignment="Left"
@@ -38,59 +38,17 @@
                        VerticalAlignment="Center" />
         </DockPanel>
 
-        <!-- Fund operations toolbar — operates on the selected fund in the list -->
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
-            <Button Content="הפקדה"
-                    Command="{Binding DepositCommand}"
-                    CommandParameter="{Binding SelectedFund}"
-                    IsEnabled="{Binding CanExecuteFundOperation}"
-                    Padding="10,4" />
-            <Button Content="משיכה"
-                    Command="{Binding WithdrawCommand}"
-                    CommandParameter="{Binding SelectedFund}"
-                    IsEnabled="{Binding CanExecuteFundOperation}"
-                    Padding="10,4"
-                    Margin="4,0,0,0" />
-            <Button Content="העברה"
-                    Command="{Binding TransferCommand}"
-                    CommandParameter="{Binding SelectedFund}"
-                    IsEnabled="{Binding CanExecuteFundOperation}"
-                    Padding="10,4"
-                    Margin="4,0,0,0" />
-            <Separator Width="1" Margin="8,2" />
-            <Button Content="שנה שם"
-                    Command="{Binding RenameFundCommand}"
-                    CommandParameter="{Binding SelectedFund}"
-                    IsEnabled="{Binding CanExecuteFundOperation}"
-                    Padding="10,4"
-                    Margin="4,0,0,0" />
-            <Button Content="מחק קרן"
-                    Command="{Binding DeleteFundCommand}"
-                    CommandParameter="{Binding SelectedFund}"
-                    IsEnabled="{Binding CanExecuteFundOperation}"
-                    Padding="10,4"
-                    Margin="4,0,0,0" />
-        </StackPanel>
-
-        <!-- Error message -->
+        <!-- Error message (portfolio-level) -->
         <TextBlock DockPanel.Dock="Top"
                    Text="{Binding ErrorMessage}"
                    Foreground="Red"
                    TextWrapping="Wrap"
-                   Margin="0,0,0,8"
+                   Margin="0,0,0,4"
                    Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibilityConverter}}" />
 
-        <!-- Loading indicator -->
-        <TextBlock DockPanel.Dock="Top"
-                   Text="טוען..."
-                   HorizontalAlignment="Center"
-                   Margin="0,8,0,8"
-                   Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}" />
-
-        <!-- Bottom: portfolio actions and future info (TODO) -->
+        <!-- Bottom: portfolio actions -->
         <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
             <Separator Margin="0,0,0,8" />
-            <!-- TODO: portfolio-level info will appear here -->
             <StackPanel Orientation="Horizontal">
                 <Button Content="שנה שם תיק"
                         Command="{Binding RenamePortfolioCommand}"
@@ -109,102 +67,403 @@
             </StackPanel>
         </StackPanel>
 
-        <!-- Center: content area -->
+        <!-- Center: Side-by-side split — Funds (right in RTL) | Splitter | History (left in RTL) -->
         <Grid>
-            <!-- Empty state message -->
-            <TextBlock Text="אין קרנות בתיק זה. לחץ על '+ קרן חדשה' כדי להתחיל."
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center"
-                       FontSize="14"
-                       Foreground="Gray">
-                <TextBlock.Style>
-                    <Style TargetType="TextBlock">
-                        <Setter Property="Visibility" Value="Collapsed" />
-                        <Style.Triggers>
-                            <MultiDataTrigger>
-                                <MultiDataTrigger.Conditions>
-                                    <Condition Binding="{Binding IsEmpty}" Value="True" />
-                                    <Condition Binding="{Binding IsLoading}" Value="False" />
-                                </MultiDataTrigger.Conditions>
-                                <Setter Property="Visibility" Value="Visible" />
-                            </MultiDataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </TextBlock.Style>
-            </TextBlock>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MinWidth="250" />
+                <ColumnDefinition Width="5" />
+                <ColumnDefinition Width="*" MinWidth="300" />
+            </Grid.ColumnDefinitions>
 
-            <!-- Fund list -->
-            <ListBox x:Name="FundListBox"
-                     ItemsSource="{Binding Funds}"
-                     SelectedItem="{Binding SelectedFund}"
-                     BorderThickness="0"
-                     HorizontalContentAlignment="Stretch">
-                <ListBox.Style>
-                    <Style TargetType="ListBox">
-                        <Setter Property="Visibility" Value="Visible" />
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding IsEmpty}" Value="True">
+            <!-- ==================== Left panel (RTL = right side): Funds ==================== -->
+            <DockPanel Grid.Column="0">
+
+                <!-- Section header -->
+                <TextBlock DockPanel.Dock="Top"
+                           Text="קרנות"
+                           FontSize="15"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,6" />
+
+                <!-- Fund operations toolbar -->
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+                    <Button Content="הפקדה"
+                            Command="{Binding DepositCommand}"
+                            CommandParameter="{Binding SelectedFund}"
+                            IsEnabled="{Binding CanExecuteFundOperation}"
+                            Padding="10,4" />
+                    <Button Content="משיכה"
+                            Command="{Binding WithdrawCommand}"
+                            CommandParameter="{Binding SelectedFund}"
+                            IsEnabled="{Binding CanExecuteFundOperation}"
+                            Padding="10,4"
+                            Margin="4,0,0,0" />
+                    <Button Content="העברה"
+                            Command="{Binding TransferCommand}"
+                            CommandParameter="{Binding SelectedFund}"
+                            IsEnabled="{Binding CanExecuteFundOperation}"
+                            Padding="10,4"
+                            Margin="4,0,0,0" />
+                    <Separator Width="1" Margin="8,2" />
+                    <Button Content="שנה שם"
+                            Command="{Binding RenameFundCommand}"
+                            CommandParameter="{Binding SelectedFund}"
+                            IsEnabled="{Binding CanExecuteFundOperation}"
+                            Padding="10,4"
+                            Margin="4,0,0,0" />
+                    <Button Content="מחק קרן"
+                            Command="{Binding DeleteFundCommand}"
+                            CommandParameter="{Binding SelectedFund}"
+                            IsEnabled="{Binding CanExecuteFundOperation}"
+                            Padding="10,4"
+                            Margin="4,0,0,0" />
+                </StackPanel>
+
+                <!-- Loading indicator -->
+                <TextBlock DockPanel.Dock="Top"
+                           Text="טוען..."
+                           HorizontalAlignment="Center"
+                           Margin="0,8,0,8"
+                           Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                <!-- Fund list content area -->
+                <Grid>
+                    <!-- Empty state message -->
+                    <TextBlock Text="אין קרנות בתיק זה. לחץ על '+ קרן חדשה' כדי להתחיל."
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               FontSize="14"
+                               Foreground="Gray">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
                                 <Setter Property="Visibility" Value="Collapsed" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </ListBox.Style>
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <DockPanel Margin="4,8">
-                            <!-- Right-click context menu -->
-                            <DockPanel.ContextMenu>
-                                <ContextMenu>
-                                    <MenuItem Header="הפקדה"
-                                              Command="{Binding DataContext.DepositCommand,
-                                                  Source={x:Reference FundListBox}}"
-                                              CommandParameter="{Binding}" />
-                                    <MenuItem Header="משיכה"
-                                              Command="{Binding DataContext.WithdrawCommand,
-                                                  Source={x:Reference FundListBox}}"
-                                              CommandParameter="{Binding}" />
-                                    <MenuItem Header="העברה מקרן זו..."
-                                              Command="{Binding DataContext.TransferCommand,
-                                                  Source={x:Reference FundListBox}}"
-                                              CommandParameter="{Binding}" />
-                                    <Separator />
-                                    <MenuItem Header="שנה שם"
-                                              Command="{Binding DataContext.RenameFundCommand,
-                                                  Source={x:Reference FundListBox}}"
-                                              CommandParameter="{Binding}" />
-                                    <Separator />
-                                    <MenuItem Header="מחק"
-                                              Command="{Binding DataContext.DeleteFundCommand,
-                                                  Source={x:Reference FundListBox}}"
-                                              CommandParameter="{Binding}" />
-                                </ContextMenu>
-                            </DockPanel.ContextMenu>
+                                <Style.Triggers>
+                                    <MultiDataTrigger>
+                                        <MultiDataTrigger.Conditions>
+                                            <Condition Binding="{Binding IsEmpty}" Value="True" />
+                                            <Condition Binding="{Binding IsLoading}" Value="False" />
+                                        </MultiDataTrigger.Conditions>
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </MultiDataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
 
-                            <!-- Balance (left side in RTL) -->
-                            <TextBlock DockPanel.Dock="Left"
-                                       Text="{Binding FormattedBalance}"
-                                       FontSize="14"
-                                       Foreground="Gray"
-                                       VerticalAlignment="Center"
-                                       FlowDirection="LeftToRight" />
+                    <!-- Fund list -->
+                    <ListBox x:Name="FundListBox"
+                             ItemsSource="{Binding Funds}"
+                             SelectedItem="{Binding SelectedFund}"
+                             BorderThickness="0"
+                             HorizontalContentAlignment="Stretch">
+                        <ListBox.Style>
+                            <Style TargetType="ListBox">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsEmpty}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ListBox.Style>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <DockPanel Margin="4,8">
+                                    <!-- Right-click context menu -->
+                                    <DockPanel.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="הפקדה"
+                                                      Command="{Binding DataContext.DepositCommand,
+                                                          Source={x:Reference FundListBox}}"
+                                                      CommandParameter="{Binding}" />
+                                            <MenuItem Header="משיכה"
+                                                      Command="{Binding DataContext.WithdrawCommand,
+                                                          Source={x:Reference FundListBox}}"
+                                                      CommandParameter="{Binding}" />
+                                            <MenuItem Header="העברה מקרן זו..."
+                                                      Command="{Binding DataContext.TransferCommand,
+                                                          Source={x:Reference FundListBox}}"
+                                                      CommandParameter="{Binding}" />
+                                            <Separator />
+                                            <MenuItem Header="שנה שם"
+                                                      Command="{Binding DataContext.RenameFundCommand,
+                                                          Source={x:Reference FundListBox}}"
+                                                      CommandParameter="{Binding}" />
+                                            <Separator />
+                                            <MenuItem Header="מחק"
+                                                      Command="{Binding DataContext.DeleteFundCommand,
+                                                          Source={x:Reference FundListBox}}"
+                                                      CommandParameter="{Binding}" />
+                                        </ContextMenu>
+                                    </DockPanel.ContextMenu>
 
-                            <!-- Allocation percent -->
-                            <TextBlock DockPanel.Dock="Left"
-                                       Text="{Binding FormattedAllocation}"
-                                       FontSize="12"
-                                       Foreground="DarkGray"
-                                       VerticalAlignment="Center"
-                                       Margin="12,0,0,0"
-                                       FlowDirection="LeftToRight" />
+                                    <!-- Balance (left side in RTL) -->
+                                    <TextBlock DockPanel.Dock="Left"
+                                               Text="{Binding FormattedBalance}"
+                                               FontSize="14"
+                                               Foreground="Gray"
+                                               VerticalAlignment="Center"
+                                               FlowDirection="LeftToRight" />
 
-                            <!-- Fund name -->
-                            <TextBlock Text="{Binding Name}"
-                                       FontSize="15"
-                                       VerticalAlignment="Center" />
-                        </DockPanel>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+                                    <!-- Allocation percent -->
+                                    <TextBlock DockPanel.Dock="Left"
+                                               Text="{Binding FormattedAllocation}"
+                                               FontSize="12"
+                                               Foreground="DarkGray"
+                                               VerticalAlignment="Center"
+                                               Margin="12,0,0,0"
+                                               FlowDirection="LeftToRight" />
+
+                                    <!-- Fund name -->
+                                    <TextBlock Text="{Binding Name}"
+                                               FontSize="15"
+                                               VerticalAlignment="Center" />
+                                </DockPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+
+            </DockPanel>
+
+            <!-- ==================== Draggable splitter ==================== -->
+            <GridSplitter Grid.Column="1"
+                          Width="5"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch"
+                          Background="LightGray"
+                          Cursor="SizeWE" />
+
+            <!-- ==================== Right panel (RTL = left side): History ==================== -->
+            <DockPanel Grid.Column="2" Margin="8,0,0,0"
+                       DataContext="{Binding HistoryViewModel}">
+
+                <!-- Section header -->
+                <TextBlock DockPanel.Dock="Top"
+                           Text="היסטוריה"
+                           FontSize="15"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,6" />
+
+                <!-- Filter bar -->
+                <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                    <!-- Date range: From -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,8,4">
+                        <TextBlock Text="מ:" VerticalAlignment="Center" Margin="0,0,4,0" />
+                        <DatePicker SelectedDate="{Binding FilterFromDate, Mode=TwoWay}"
+                                    FlowDirection="LeftToRight"
+                                    Width="120" />
+                    </StackPanel>
+
+                    <!-- Date range: To -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,8,4">
+                        <TextBlock Text="עד:" VerticalAlignment="Center" Margin="0,0,4,0" />
+                        <DatePicker SelectedDate="{Binding FilterToDate, Mode=TwoWay}"
+                                    FlowDirection="LeftToRight"
+                                    Width="120" />
+                    </StackPanel>
+
+                    <!-- Fund filter -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,8,4">
+                        <TextBlock Text="קרן:" VerticalAlignment="Center" Margin="0,0,4,0" />
+                        <ComboBox ItemsSource="{Binding FundFilterOptions}"
+                                  SelectedItem="{Binding SelectedFundFilter, Mode=TwoWay}"
+                                  DisplayMemberPath="DisplayName"
+                                  Width="130"
+                                  IsEditable="False" />
+                    </StackPanel>
+
+                    <!-- Type filter -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,8,4">
+                        <TextBlock Text="סוג:" VerticalAlignment="Center" Margin="0,0,4,0" />
+                        <ComboBox ItemsSource="{Binding TypeFilterOptions}"
+                                  SelectedItem="{Binding SelectedTypeFilter, Mode=TwoWay}"
+                                  DisplayMemberPath="DisplayLabel"
+                                  Width="130"
+                                  IsEditable="False" />
+                    </StackPanel>
+
+                    <!-- Clear filters -->
+                    <Button Content="נקה"
+                            Command="{Binding ClearFiltersCommand}"
+                            Padding="8,4"
+                            Margin="0,0,4,4" />
+
+                    <!-- CSV export -->
+                    <Button Content="CSV"
+                            Command="{Binding ExportCsvCommand}"
+                            Padding="8,4"
+                            Margin="0,0,0,4" />
+                </WrapPanel>
+
+                <!-- History error message -->
+                <TextBlock DockPanel.Dock="Top"
+                           Text="{Binding ErrorMessage}"
+                           Foreground="Red"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,4"
+                           Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibilityConverter}}" />
+
+                <!-- Loading indicator -->
+                <TextBlock DockPanel.Dock="Top"
+                           Text="טוען היסטוריה..."
+                           HorizontalAlignment="Center"
+                           Margin="0,8,0,8"
+                           Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                <!-- History content area -->
+                <Grid>
+                    <!-- Empty state -->
+                    <TextBlock Text="אין רשומות היסטוריה."
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               FontSize="14"
+                               Foreground="Gray">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <MultiDataTrigger>
+                                        <MultiDataTrigger.Conditions>
+                                            <Condition Binding="{Binding IsEmpty}" Value="True" />
+                                            <Condition Binding="{Binding IsLoading}" Value="False" />
+                                        </MultiDataTrigger.Conditions>
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </MultiDataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <!-- Transaction history list with expandable items -->
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ScrollViewer.Style>
+                            <Style TargetType="ScrollViewer">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsEmpty}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ScrollViewer.Style>
+                        <ItemsControl ItemsSource="{Binding Transactions}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="LightGray" BorderThickness="0,0,0,1" Padding="4,6">
+                                        <Expander IsExpanded="False">
+                                            <Expander.Header>
+                                                <DockPanel Width="{Binding ActualWidth,
+                                                    RelativeSource={RelativeSource AncestorType=ContentPresenter}}"
+                                                           Margin="0,0,16,0">
+                                                    <!-- Amount (left side in RTL) -->
+                                                    <TextBlock DockPanel.Dock="Left"
+                                                               Text="{Binding FormattedAmount}"
+                                                               FontSize="13"
+                                                               Foreground="Gray"
+                                                               VerticalAlignment="Center"
+                                                               FlowDirection="LeftToRight"
+                                                               MinWidth="90"
+                                                               TextAlignment="Right" />
+
+                                                    <!-- Date -->
+                                                    <TextBlock DockPanel.Dock="Left"
+                                                               FontSize="12"
+                                                               Foreground="DarkGray"
+                                                               VerticalAlignment="Center"
+                                                               Margin="12,0,0,0"
+                                                               FlowDirection="LeftToRight">
+                                                        <TextBlock.Text>
+                                                            <Binding Path="CommittedAtUtc"
+                                                                     StringFormat="{}{0:dd/MM/yyyy HH:mm}" />
+                                                        </TextBlock.Text>
+                                                    </TextBlock>
+
+                                                    <!-- Transaction type label -->
+                                                    <TextBlock Text="{Binding TransactionTypeLabel}"
+                                                               FontSize="14"
+                                                               FontWeight="SemiBold"
+                                                               VerticalAlignment="Center" />
+                                                </DockPanel>
+                                            </Expander.Header>
+
+                                            <!-- Expanded detail area -->
+                                            <StackPanel Margin="24,4,0,4">
+                                                <!-- Summary text -->
+                                                <TextBlock Text="{Binding SummaryText}"
+                                                           FontSize="12"
+                                                           Foreground="Gray"
+                                                           Margin="0,0,0,4"
+                                                           Visibility="{Binding SummaryText,
+                                                               Converter={StaticResource StringToVisibilityConverter}}" />
+
+                                                <!-- Detail rows -->
+                                                <ItemsControl ItemsSource="{Binding Details}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <DockPanel Margin="0,2">
+                                                                <!-- After balance -->
+                                                                <TextBlock DockPanel.Dock="Left"
+                                                                           Text="{Binding FormattedAfterBalance}"
+                                                                           FontSize="12"
+                                                                           Foreground="Gray"
+                                                                           VerticalAlignment="Center"
+                                                                           FlowDirection="LeftToRight"
+                                                                           MinWidth="80"
+                                                                           TextAlignment="Right" />
+
+                                                                <!-- Arrow -->
+                                                                <TextBlock DockPanel.Dock="Left"
+                                                                           Text="←"
+                                                                           FontSize="12"
+                                                                           Foreground="DarkGray"
+                                                                           VerticalAlignment="Center"
+                                                                           Margin="4,0" />
+
+                                                                <!-- Before balance -->
+                                                                <TextBlock DockPanel.Dock="Left"
+                                                                           Text="{Binding FormattedBeforeBalance}"
+                                                                           FontSize="12"
+                                                                           Foreground="Gray"
+                                                                           VerticalAlignment="Center"
+                                                                           FlowDirection="LeftToRight"
+                                                                           MinWidth="80"
+                                                                           TextAlignment="Right" />
+
+                                                                <!-- Amount change -->
+                                                                <TextBlock DockPanel.Dock="Left"
+                                                                           Text="{Binding FormattedAmount}"
+                                                                           FontSize="12"
+                                                                           VerticalAlignment="Center"
+                                                                           FlowDirection="LeftToRight"
+                                                                           MinWidth="70"
+                                                                           TextAlignment="Right"
+                                                                           Margin="8,0,0,0" />
+
+                                                                <!-- Fund name + detail type -->
+                                                                <TextBlock VerticalAlignment="Center"
+                                                                           FontSize="12"
+                                                                           TextTrimming="CharacterEllipsis">
+                                                                    <Run Text="{Binding FundName, Mode=OneWay}" />
+                                                                    <Run Text=" — " Foreground="DarkGray" />
+                                                                    <Run Text="{Binding TransactionTypeLabel, Mode=OneWay}"
+                                                                         Foreground="DarkGray" />
+                                                                </TextBlock>
+                                                            </DockPanel>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </StackPanel>
+                                        </Expander>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+
+            </DockPanel>
+
         </Grid>
 
     </DockPanel>

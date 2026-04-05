@@ -18,8 +18,13 @@ public class PortfolioViewModelTests
 
     private readonly IFundService _fundService = Substitute.For<IFundService>();
     private readonly IPortfolioService _portfolioService = Substitute.For<IPortfolioService>();
+    private readonly ITransactionService _transactionService = Substitute.For<ITransactionService>();
 
-    private PortfolioViewModel MakeVm() => new(_fundService, _portfolioService, PortfolioId, PortfolioName);
+    private PortfolioViewModel MakeVm()
+    {
+        var historyVm = new TransactionHistoryViewModel(_transactionService, PortfolioId);
+        return new PortfolioViewModel(_fundService, _portfolioService, PortfolioId, PortfolioName, historyVm);
+    }
 
     // -----------------------------------------------------------------------------------------
     // Helpers
