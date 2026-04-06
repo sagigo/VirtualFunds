@@ -633,4 +633,422 @@ public class PortfolioViewModelTests
         Assert.Equal(PortfolioName, vm.PortfolioName);
         Assert.Equal(PortfolioId, vm.PortfolioId);
     }
+
+    // -----------------------------------------------------------------------------------------
+    // Deposit (E6.8)
+    // -----------------------------------------------------------------------------------------
+
+    /// <summary>Wires TransferRequested to return a predetermined result.</summary>
+    private static void StubTransfer(PortfolioViewModel vm, (Guid DestinationFundId, long AmountAgoras)? result)
+    {
+        vm.TransferRequested += (_, _) => Task.FromResult(result);
+    }
+
+    [Fact]
+    public async Task Deposit_Success_CallsServiceAndReloads()
+    {
+        var fund = MakeItem();
+        _fundService.GetFundsAsync(PortfolioId).Returns(new List<FundListItem> { fund });
+
+        var vm = MakeVm();
+        StubAmountInput(vm, 5000);
+        StubConfirmation(vm, true);
+
+        await vm.DepositCommand.ExecuteAsync(fund);
+
+        await _fundService.Received(1).DepositAsync(PortfolioId, fund.FundId, 5000);
+        Assert.Single(vm.Funds);
+    }
+
+    [Fact]
+    public async Task Deposit_Cancelled_DoesNotCallService()
+    {
+        var fund = MakeItem();
+        var vm = MakeVm();
+        StubAmountInput(vm, null); // user cancelled amount dialog
+
+        await vm.DepositCommand.ExecuteAsync(fund);
+
+        await _fundService.DidNotReceive().DepositAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<long>());
+    }
+
+    [Fact]
+    public async Task Deposit_ConfirmationDeclined_DoesNotCallService()
+    {
+        var fund = MakeItem();
+        var vm = MakeVm();
+        StubAmountInput(vm, 5000);
+        StubConfirmation(vm, false);
+
+        await vm.DepositCommand.ExecuteAsync(fund);
+
+        await _fundService.DidNotReceive().DepositAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<long>());
+    }
+
+    [Fact]
+    public async Task Deposit_NegativeAmount_SetsHebrewErrorMessage()
+    {
+        var fund = MakeItem();
+        _fundService.DepositAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<long>())
+            .ThrowsAsync(new NegativeFundAmountException());
+
+        var vm = MakeVm();
+        StubAmountInput(vm, -100);
+        StubConfirmation(vm, true);
+
+        await vm.DepositCommand.ExecuteAsync(fund);
+
+        Assert.NotEmpty(vm.ErrorMessage);
+        Assert.DoesNotContain("Exception", vm.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task Deposit_PortfolioClosed_SetsHebrewErrorMessage()
+    {
+        var fund = MakeItem();
+        _fundService.DepositAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<long>())
+            .ThrowsAsync(new PortfolioClosedException());
+
+        var vm = MakeVm();
+        StubAmountInput(vm, 5000);
+        StubConfirmation(vm, true);
+
+        await vm.DepositCommand.ExecuteAsync(fund);
+
+        Assert.NotEmpty(vm.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task Deposit_FundNotFound_SetsHebrewErrorMessage()
+    {
+        var fund = MakeItem();
+        _fundService.DepositAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<long>())
+            .ThrowsAsync(new FundNotFoundException());
+
+        var vm = MakeVm();
+        StubAmountInput(vm, 5000);
+        StubConfirmation(vm, true);
+
+        await vm.DepositCommand.ExecuteAsync(fund);
+
+        Assert.NotEmpty(vm.ErrorMessage);
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Withdraw (E6.9)
+    // -----------------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task Withdraw_Success_CallsServiceAndReloads()
+    {
+        var fund = MakeItem(balance: 20000);
+        _fundService.GetFundsAsync(PortfolioId).Returns(new List<FundListItem> { fund });
+
+        var vm = MakeVm();
+        StubAmountInput(vm, 5000);
+        StubConfirmation(vm, true);
+
+        await vm.WithdrawCommand.ExecuteAsync(fund);
+
+        await _fundService.Received(1).WithdrawAsync(PortfolioId, fund.FundId, 5000);
+    }
+
+    [Fact]
+    public async Task Withdraw_Cancelled_DoesNotCallService()
+    {
+        var fund = MakeItem();
+        var vm = MakeVm();
+        StubAmountInput(vm, null);
+
+        await vm.WithdrawCommand.ExecuteAsync(fund);
+
+        await _fundService.DidNotReceive().WithdrawAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<long>());
+    }
+
+    [Fact]
+    public async Task Withdraw_InsufficientBalance_SetsHebrewErrorMessage()
+    {
+        var fund = MakeItem();
+        _fundService.WithdrawAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<long>())
+            .ThrowsAsync(new InsufficientFundBalanceException());
+
+        var vm = MakeVm();
+        StubAmountInput(vm, 99999);
+        StubConfirmation(vm, true);
+
+        await vm.WithdrawCommand.ExecuteAsync(fund);
+
+        Assert.NotEmpty(vm.ErrorMessage);
+        Assert.DoesNotContain("Exception", vm.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task Withdraw_NegativeAmount_SetsHebrewErrorMessage()
+    {
+        var fund = MakeItem();
+        _fundService.WithdrawAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<long>())
+            .ThrowsAsync(new NegativeFundAmountException());
+
+        var vm = MakeVm();
+        StubAmountInput(vm, -100);
+        StubConfirmation(vm, true);
+
+        await vm.WithdrawCommand.ExecuteAsync(fund);
+
+        Assert.NotEmpty(vm.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task Withdraw_PortfolioClosed_SetsHebrewErrorMessage()
+    {
+        var fund = MakeItem();
+        _fundService.WithdrawAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<long>())
+            .ThrowsAsync(new PortfolioClosedException());
+
+        var vm = MakeVm();
+        StubAmountInput(vm, 5000);
+        StubConfirmation(vm, true);
+
+        await vm.WithdrawCommand.ExecuteAsync(fund);
+
+        Assert.NotEmpty(vm.ErrorMessage);
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Transfer (E6.10)
+    // -----------------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task Transfer_OnlyOneFund_SetsHebrewErrorMessage_DoesNotCallService()
+    {
+        // Only one fund loaded — no destination possible.
+        var fund = MakeItem("קרן יחידה");
+        _fundService.GetFundsAsync(PortfolioId).Returns(new List<FundListItem> { fund });
+        var vm = MakeVm();
+        await vm.LoadFundsCommand.ExecuteAsync(null);
+
+        await vm.TransferCommand.ExecuteAsync(fund);
+
+        Assert.NotEmpty(vm.ErrorMessage);
+        Assert.DoesNotContain("Exception", vm.ErrorMessage);
+        await _fundService.DidNotReceive()
+            .TransferAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<long>());
+    }
+
+    [Fact]
+    public async Task Transfer_Cancelled_DoesNotCallService()
+    {
+        var fundA = MakeItem("א");
+        var fundB = MakeItem("ב");
+        _fundService.GetFundsAsync(PortfolioId).Returns(new List<FundListItem> { fundA, fundB });
+        var vm = MakeVm();
+        await vm.LoadFundsCommand.ExecuteAsync(null);
+        StubTransfer(vm, null); // user cancelled
+
+        await vm.TransferCommand.ExecuteAsync(fundA);
+
+        await _fundService.DidNotReceive()
+            .TransferAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<long>());
+    }
+
+    [Fact]
+    public async Task Transfer_ConfirmationDeclined_DoesNotCallService()
+    {
+        var fundA = MakeItem("א");
+        var fundB = MakeItem("ב");
+        _fundService.GetFundsAsync(PortfolioId).Returns(new List<FundListItem> { fundA, fundB });
+        var vm = MakeVm();
+        await vm.LoadFundsCommand.ExecuteAsync(null);
+        StubTransfer(vm, (fundB.FundId, 5000));
+        StubConfirmation(vm, false);
+
+        await vm.TransferCommand.ExecuteAsync(fundA);
+
+        await _fundService.DidNotReceive()
+            .TransferAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<long>());
+    }
+
+    [Fact]
+    public async Task Transfer_Success_CallsServiceAndReloads()
+    {
+        var fundA = MakeItem("א");
+        var fundB = MakeItem("ב");
+        _fundService.GetFundsAsync(PortfolioId).Returns(new List<FundListItem> { fundA, fundB });
+        var vm = MakeVm();
+        await vm.LoadFundsCommand.ExecuteAsync(null);
+        StubTransfer(vm, (fundB.FundId, 3000));
+        StubConfirmation(vm, true);
+
+        await vm.TransferCommand.ExecuteAsync(fundA);
+
+        await _fundService.Received(1)
+            .TransferAsync(PortfolioId, fundA.FundId, fundB.FundId, 3000);
+    }
+
+    [Fact]
+    public async Task Transfer_InsufficientBalance_SetsHebrewErrorMessage()
+    {
+        var fundA = MakeItem("א");
+        var fundB = MakeItem("ב");
+        _fundService.GetFundsAsync(PortfolioId).Returns(new List<FundListItem> { fundA, fundB });
+        _fundService.TransferAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<long>())
+            .ThrowsAsync(new InsufficientFundBalanceException());
+
+        var vm = MakeVm();
+        await vm.LoadFundsCommand.ExecuteAsync(null);
+        StubTransfer(vm, (fundB.FundId, 99999));
+        StubConfirmation(vm, true);
+
+        await vm.TransferCommand.ExecuteAsync(fundA);
+
+        Assert.NotEmpty(vm.ErrorMessage);
+        Assert.DoesNotContain("Exception", vm.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task Transfer_SameFund_SetsHebrewErrorMessage()
+    {
+        var fundA = MakeItem("א");
+        var fundB = MakeItem("ב");
+        _fundService.GetFundsAsync(PortfolioId).Returns(new List<FundListItem> { fundA, fundB });
+        _fundService.TransferAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<long>())
+            .ThrowsAsync(new SameFundTransferException());
+
+        var vm = MakeVm();
+        await vm.LoadFundsCommand.ExecuteAsync(null);
+        StubTransfer(vm, (fundB.FundId, 5000));
+        StubConfirmation(vm, true);
+
+        await vm.TransferCommand.ExecuteAsync(fundA);
+
+        Assert.NotEmpty(vm.ErrorMessage);
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // RenamePortfolio
+    // -----------------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task RenamePortfolio_Success_UpdatesPortfolioName()
+    {
+        var vm = MakeVm();
+        StubNameInput(vm, "שם חדש לתיק");
+
+        await vm.RenamePortfolioCommand.ExecuteAsync(null);
+
+        Assert.Equal("שם חדש לתיק", vm.PortfolioName);
+    }
+
+    [Fact]
+    public async Task RenamePortfolio_Cancelled_DoesNotCallService()
+    {
+        var vm = MakeVm();
+        StubNameInput(vm, null);
+
+        await vm.RenamePortfolioCommand.ExecuteAsync(null);
+
+        await _portfolioService.DidNotReceive()
+            .RenamePortfolioAsync(Arg.Any<Guid>(), Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task RenamePortfolio_EmptyName_SetsHebrewErrorMessage()
+    {
+        _portfolioService.RenamePortfolioAsync(Arg.Any<Guid>(), Arg.Any<string>())
+            .ThrowsAsync(new EmptyPortfolioNameException());
+
+        var vm = MakeVm();
+        StubNameInput(vm, "");
+
+        await vm.RenamePortfolioCommand.ExecuteAsync(null);
+
+        Assert.NotEmpty(vm.ErrorMessage);
+        Assert.DoesNotContain("Exception", vm.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task RenamePortfolio_DuplicateName_SetsHebrewErrorMessage()
+    {
+        _portfolioService.RenamePortfolioAsync(Arg.Any<Guid>(), Arg.Any<string>())
+            .ThrowsAsync(new DuplicatePortfolioNameException());
+
+        var vm = MakeVm();
+        StubNameInput(vm, "כפול");
+
+        await vm.RenamePortfolioCommand.ExecuteAsync(null);
+
+        Assert.NotEmpty(vm.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task RenamePortfolio_ClosedPortfolio_SetsHebrewErrorMessage()
+    {
+        _portfolioService.RenamePortfolioAsync(Arg.Any<Guid>(), Arg.Any<string>())
+            .ThrowsAsync(new PortfolioClosedException());
+
+        var vm = MakeVm();
+        StubNameInput(vm, "שם חדש");
+
+        await vm.RenamePortfolioCommand.ExecuteAsync(null);
+
+        Assert.NotEmpty(vm.ErrorMessage);
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // DeletePortfolio (inside PortfolioViewModel — closes current portfolio)
+    // -----------------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task DeletePortfolio_Confirmed_CallsCloseAndRaisesBackRequested()
+    {
+        var vm = MakeVm();
+        StubConfirmation(vm, true);
+        var backRaised = false;
+        vm.BackRequested += () => backRaised = true;
+
+        await vm.DeletePortfolioCommand.ExecuteAsync(null);
+
+        await _portfolioService.Received(1).ClosePortfolioAsync(PortfolioId);
+        Assert.True(backRaised);
+    }
+
+    [Fact]
+    public async Task DeletePortfolio_NotConfirmed_DoesNotCallService()
+    {
+        var vm = MakeVm();
+        StubConfirmation(vm, false);
+
+        await vm.DeletePortfolioCommand.ExecuteAsync(null);
+
+        await _portfolioService.DidNotReceive().ClosePortfolioAsync(Arg.Any<Guid>());
+    }
+
+    [Fact]
+    public async Task DeletePortfolio_PortfolioClosed_SetsHebrewErrorMessage()
+    {
+        _portfolioService.ClosePortfolioAsync(Arg.Any<Guid>())
+            .ThrowsAsync(new PortfolioClosedException());
+
+        var vm = MakeVm();
+        StubConfirmation(vm, true);
+
+        await vm.DeletePortfolioCommand.ExecuteAsync(null);
+
+        Assert.NotEmpty(vm.ErrorMessage);
+        Assert.DoesNotContain("Exception", vm.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task DeletePortfolio_NotFound_SetsHebrewErrorMessage()
+    {
+        _portfolioService.ClosePortfolioAsync(Arg.Any<Guid>())
+            .ThrowsAsync(new PortfolioNotFoundException());
+
+        var vm = MakeVm();
+        StubConfirmation(vm, true);
+
+        await vm.DeletePortfolioCommand.ExecuteAsync(null);
+
+        Assert.NotEmpty(vm.ErrorMessage);
+    }
 }
