@@ -170,7 +170,7 @@ public sealed class SupabaseFundService : IFundService
                     p_operation_id = operationId,
                     p_summary_transaction_id = summaryTransactionId,
                     p_summary_transaction_type = "FundDeposit",
-                    p_summary_text = "Deposit into fund",
+                    p_summary_text = "הפקדה לקרן",
                     p_details = details,
                 }).ConfigureAwait(false);
         }
@@ -214,7 +214,7 @@ public sealed class SupabaseFundService : IFundService
                     p_operation_id = operationId,
                     p_summary_transaction_id = summaryTransactionId,
                     p_summary_transaction_type = "FundWithdrawal",
-                    p_summary_text = "Withdrawal from fund",
+                    p_summary_text = "משיכה מקרן",
                     p_details = details,
                 }).ConfigureAwait(false);
         }
@@ -269,7 +269,7 @@ public sealed class SupabaseFundService : IFundService
                     p_operation_id = operationId,
                     p_summary_transaction_id = summaryTransactionId,
                     p_summary_transaction_type = "Transfer",
-                    p_summary_text = "Transfer between funds",
+                    p_summary_text = "העברה בין קרנות",
                     p_details = details,
                 }).ConfigureAwait(false);
         }
@@ -384,7 +384,7 @@ public sealed class SupabaseFundService : IFundService
             return null;
 
         // Steps 11–12: Call RPC.
-        var summaryText = $"Revalue portfolio total from {oldTotalAgoras} to {newTotalAgoras}";
+        var summaryText = $"עדכון שווי תיק מ-{MoneyFormatter.FormatAgoras(oldTotalAgoras)} ל-{MoneyFormatter.FormatAgoras(newTotalAgoras)}";
 
         try
         {
@@ -453,7 +453,7 @@ public sealed class SupabaseFundService : IFundService
                     p_operation_id = undoOperationId,
                     p_summary_transaction_id = summaryTransactionId,
                     p_summary_transaction_type = "Undo",
-                    p_summary_text = $"Undo operation {originalOperationId}",
+                    p_summary_text = "ביטול פעולה",
                     p_undo_of_operation_id = originalOperationId,
                     p_details = details,
                 }).ConfigureAwait(false);

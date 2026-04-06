@@ -81,8 +81,14 @@ public class TransactionDetailItem
     /// <summary>The amount change in agoras (positive = credit, negative = debit).</summary>
     public long AmountAgoras { get; init; }
 
-    /// <summary>Formatted amount change (e.g. "+100.00 ₪" or "-50.00 ₪").</summary>
+    /// <summary>Formatted amount change without explicit sign (e.g. "100.00 ₪" or "-50.00 ₪").</summary>
     public string FormattedAmount => MoneyFormatter.FormatAgoras(AmountAgoras);
+
+    /// <summary>Formatted signed amount change for the history detail row (e.g. "+100.00 ₪" or "-50.00 ₪").</summary>
+    public string FormattedSignedAmount =>
+        AmountAgoras >= 0
+            ? "+" + MoneyFormatter.FormatAgoras(AmountAgoras)
+            : MoneyFormatter.FormatAgoras(AmountAgoras);
 
     /// <summary>Fund balance before this change (may be null for structural events).</summary>
     public long? BeforeBalanceAgoras { get; init; }

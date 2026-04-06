@@ -356,18 +356,6 @@
                                                 <DockPanel Width="{Binding ActualWidth,
                                                     RelativeSource={RelativeSource AncestorType=ContentPresenter}}"
                                                            Margin="0,0,16,0">
-                                                    <!-- Undo button (visible only for undoable operations, E6.12) -->
-                                                    <Button DockPanel.Dock="Left"
-                                                            Content="↩"
-                                                            ToolTip="ביטול פעולה"
-                                                            Command="{Binding DataContext.UndoOperationCommand,
-                                                                RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                            CommandParameter="{Binding}"
-                                                            Padding="4,2"
-                                                            Margin="4,0,0,0"
-                                                            FontSize="12"
-                                                            Visibility="{Binding IsUndoable,
-                                                                Converter={StaticResource BooleanToVisibilityConverter}}" />
 
                                                     <!-- Amount (left side in RTL) -->
                                                     <TextBlock DockPanel.Dock="Left"
@@ -402,6 +390,19 @@
 
                                             <!-- Expanded detail area -->
                                             <StackPanel Margin="24,4,0,4">
+                                                <!-- Undo button (visible only for undoable operations, E6.12) -->
+                                                <Button Content="↩ בטל פעולה"
+                                                        ToolTip="ביטול פעולה"
+                                                        Command="{Binding DataContext.UndoOperationCommand,
+                                                            RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}"
+                                                        HorizontalAlignment="Right"
+                                                        Padding="8,3"
+                                                        Margin="0,0,0,6"
+                                                        FontSize="12"
+                                                        Visibility="{Binding IsUndoable,
+                                                            Converter={StaticResource BooleanToVisibilityConverter}}" />
+
                                                 <!-- Summary text -->
                                                 <TextBlock Text="{Binding SummaryText}"
                                                            FontSize="12"
@@ -415,45 +416,57 @@
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate>
                                                             <DockPanel Margin="0,2">
-                                                                <!-- After balance -->
-                                                                <TextBlock DockPanel.Dock="Left"
-                                                                           Text="{Binding FormattedAfterBalance}"
-                                                                           FontSize="12"
-                                                                           Foreground="Gray"
-                                                                           VerticalAlignment="Center"
-                                                                           FlowDirection="LeftToRight"
-                                                                           MinWidth="80"
-                                                                           TextAlignment="Right" />
+                                                                <!-- Left side: before / change / after with Hebrew labels -->
+                                                                <StackPanel DockPanel.Dock="Left"
+                                                                            Orientation="Horizontal"
+                                                                            VerticalAlignment="Center"
+                                                                            Margin="0,0,12,0">
+                                                                    <TextBlock Text="לפני:"
+                                                                               FontSize="12"
+                                                                               Foreground="DarkGray"
+                                                                               VerticalAlignment="Center" />
+                                                                    <TextBlock Text="{Binding FormattedBeforeBalance}"
+                                                                               FontSize="12"
+                                                                               Foreground="Gray"
+                                                                               VerticalAlignment="Center"
+                                                                               Margin="2,0,0,0"
+                                                                               FlowDirection="LeftToRight"
+                                                                               MinWidth="70"
+                                                                               TextAlignment="Right" />
+                                                                    <TextBlock Text=" — "
+                                                                               FontSize="12"
+                                                                               Foreground="DarkGray"
+                                                                               VerticalAlignment="Center" />
+                                                                    <TextBlock Text="שינוי:"
+                                                                               FontSize="12"
+                                                                               Foreground="DarkGray"
+                                                                               VerticalAlignment="Center" />
+                                                                    <TextBlock Text="{Binding FormattedSignedAmount}"
+                                                                               FontSize="12"
+                                                                               VerticalAlignment="Center"
+                                                                               Margin="2,0,0,0"
+                                                                               FlowDirection="LeftToRight"
+                                                                               MinWidth="70"
+                                                                               TextAlignment="Right" />
+                                                                    <TextBlock Text=" — "
+                                                                               FontSize="12"
+                                                                               Foreground="DarkGray"
+                                                                               VerticalAlignment="Center" />
+                                                                    <TextBlock Text="אחרי:"
+                                                                               FontSize="12"
+                                                                               Foreground="DarkGray"
+                                                                               VerticalAlignment="Center" />
+                                                                    <TextBlock Text="{Binding FormattedAfterBalance}"
+                                                                               FontSize="12"
+                                                                               Foreground="Gray"
+                                                                               VerticalAlignment="Center"
+                                                                               Margin="2,0,0,0"
+                                                                               FlowDirection="LeftToRight"
+                                                                               MinWidth="70"
+                                                                               TextAlignment="Right" />
+                                                                </StackPanel>
 
-                                                                <!-- Arrow -->
-                                                                <TextBlock DockPanel.Dock="Left"
-                                                                           Text="←"
-                                                                           FontSize="12"
-                                                                           Foreground="DarkGray"
-                                                                           VerticalAlignment="Center"
-                                                                           Margin="4,0" />
-
-                                                                <!-- Before balance -->
-                                                                <TextBlock DockPanel.Dock="Left"
-                                                                           Text="{Binding FormattedBeforeBalance}"
-                                                                           FontSize="12"
-                                                                           Foreground="Gray"
-                                                                           VerticalAlignment="Center"
-                                                                           FlowDirection="LeftToRight"
-                                                                           MinWidth="80"
-                                                                           TextAlignment="Right" />
-
-                                                                <!-- Amount change -->
-                                                                <TextBlock DockPanel.Dock="Left"
-                                                                           Text="{Binding FormattedAmount}"
-                                                                           FontSize="12"
-                                                                           VerticalAlignment="Center"
-                                                                           FlowDirection="LeftToRight"
-                                                                           MinWidth="70"
-                                                                           TextAlignment="Right"
-                                                                           Margin="8,0,0,0" />
-
-                                                                <!-- Fund name + detail type -->
+                                                                <!-- Right side (fill): fund name + detail type -->
                                                                 <TextBlock VerticalAlignment="Center"
                                                                            FontSize="12"
                                                                            TextTrimming="CharacterEllipsis">
