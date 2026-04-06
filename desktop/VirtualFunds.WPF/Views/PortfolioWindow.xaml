@@ -356,6 +356,19 @@
                                                 <DockPanel Width="{Binding ActualWidth,
                                                     RelativeSource={RelativeSource AncestorType=ContentPresenter}}"
                                                            Margin="0,0,16,0">
+                                                    <!-- Undo button (visible only for undoable operations, E6.12) -->
+                                                    <Button DockPanel.Dock="Left"
+                                                            Content="↩"
+                                                            ToolTip="ביטול פעולה"
+                                                            Command="{Binding DataContext.UndoOperationCommand,
+                                                                RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Padding="4,2"
+                                                            Margin="4,0,0,0"
+                                                            FontSize="12"
+                                                            Visibility="{Binding IsUndoable,
+                                                                Converter={StaticResource BooleanToVisibilityConverter}}" />
+
                                                     <!-- Amount (left side in RTL) -->
                                                     <TextBlock DockPanel.Dock="Left"
                                                                Text="{Binding FormattedAmount}"

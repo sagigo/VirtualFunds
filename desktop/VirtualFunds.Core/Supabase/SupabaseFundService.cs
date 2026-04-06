@@ -140,7 +140,7 @@ public sealed class SupabaseFundService : IFundService
     // -----------------------------------------------------------------------------------------
 
     /// <inheritdoc />
-    public async Task DepositAsync(Guid portfolioId, Guid fundId, long amountAgoras)
+    public async Task<Guid> DepositAsync(Guid portfolioId, Guid fundId, long amountAgoras)
     {
         if (amountAgoras <= 0)
             throw new NegativeFundAmountException();
@@ -179,10 +179,12 @@ public sealed class SupabaseFundService : IFundService
             ThrowForRpcError(ex);
             throw;
         }
+
+        return operationId;
     }
 
     /// <inheritdoc />
-    public async Task WithdrawAsync(Guid portfolioId, Guid fundId, long amountAgoras)
+    public async Task<Guid> WithdrawAsync(Guid portfolioId, Guid fundId, long amountAgoras)
     {
         if (amountAgoras <= 0)
             throw new NegativeFundAmountException();
@@ -221,10 +223,12 @@ public sealed class SupabaseFundService : IFundService
             ThrowForRpcError(ex);
             throw;
         }
+
+        return operationId;
     }
 
     /// <inheritdoc />
-    public async Task TransferAsync(Guid portfolioId, Guid sourceFundId, Guid destinationFundId, long amountAgoras)
+    public async Task<Guid> TransferAsync(Guid portfolioId, Guid sourceFundId, Guid destinationFundId, long amountAgoras)
     {
         if (sourceFundId == destinationFundId)
             throw new SameFundTransferException();
@@ -274,6 +278,8 @@ public sealed class SupabaseFundService : IFundService
             ThrowForRpcError(ex);
             throw;
         }
+
+        return operationId;
     }
 
     // -----------------------------------------------------------------------------------------
@@ -281,7 +287,7 @@ public sealed class SupabaseFundService : IFundService
     // -----------------------------------------------------------------------------------------
 
     /// <inheritdoc />
-    public async Task RevaluePortfolioAsync(Guid portfolioId, long newTotalAgoras)
+    public async Task<Guid?> RevaluePortfolioAsync(Guid portfolioId, long newTotalAgoras)
     {
         if (newTotalAgoras <= 0)
             throw new NegativeFundAmountException();
@@ -300,7 +306,7 @@ public sealed class SupabaseFundService : IFundService
 
         // Step 3: No-op when totals are equal — don't log anything.
         if (newTotalAgoras == oldTotalAgoras)
-            return;
+            return null;
 
         // Step 4: Compute provisional new balances using banker's rounding.
         // Uses decimal arithmetic to avoid floating-point precision issues.
@@ -375,7 +381,7 @@ public sealed class SupabaseFundService : IFundService
 
         // All deltas zero after rounding — treat as no-op.
         if (details.Length == 0)
-            return;
+            return null;
 
         // Steps 11–12: Call RPC.
         var summaryText = $"Revalue portfolio total from {oldTotalAgoras} to {newTotalAgoras}";
@@ -391,6 +397,64 @@ public sealed class SupabaseFundService : IFundService
                     p_summary_transaction_id = summaryTransactionId,
                     p_summary_transaction_type = "PortfolioRevalued",
                     p_summary_text = summaryText,
+                    p_details = details,
+                }).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (IsRpcException(ex))
+        {
+            ThrowForRpcError(ex);
+            throw;
+        }
+
+        return operationId;
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Undo (E6.12)
+    // -----------------------------------------------------------------------------------------
+
+    /// <inheritdoc />
+    public async Task UndoOperationAsync(Guid portfolioId, Guid originalOperationId)
+    {
+        // Step 2 (E6.12): Query the original detail rows for the operation.
+        var response = await _client.From<Transaction>()
+            .Filter("portfolio_id", Constants.Operator.Equals, portfolioId.ToString())
+            .Filter("operation_id", Constants.Operator.Equals, originalOperationId.ToString())
+            .Filter("record_kind", Constants.Operator.Equals, "Detail")
+            .Get()
+            .ConfigureAwait(false);
+
+        var originalDetails = response.Models;
+
+        // Step 3: Create new operation/transaction IDs.
+        var undoOperationId = OperationIdGenerator.NewOperationId();
+        var summaryTransactionId = OperationIdGenerator.NewTransactionId();
+
+        // Steps 4-5: Build compensating detail rows with negated amounts.
+        var details = originalDetails
+            .Select(d => new
+            {
+                transaction_id = OperationIdGenerator.NewTransactionId(),
+                transaction_type = "Undo",
+                fund_id = d.FundId!.Value, // ! safe: filtered to Detail rows which always have fund_id
+                amount_agoras = -d.AmountAgoras, // Negate the original amount.
+                undo_of_operation_id = originalOperationId,
+            })
+            .ToArray();
+
+        // Step 6: Commit via RPC. The server validates no negative balances (step 5).
+        try
+        {
+            await _client.Rpc(
+                "rpc_commit_fund_operation",
+                new
+                {
+                    p_portfolio_id = portfolioId,
+                    p_operation_id = undoOperationId,
+                    p_summary_transaction_id = summaryTransactionId,
+                    p_summary_transaction_type = "Undo",
+                    p_summary_text = $"Undo operation {originalOperationId}",
+                    p_undo_of_operation_id = originalOperationId,
                     p_details = details,
                 }).ConfigureAwait(false);
         }

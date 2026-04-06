@@ -28,6 +28,18 @@ public class TransactionGroup
     public string? SummaryText { get; init; }
 
     /// <summary>
+    /// If this operation is an undo, references the original operation_id it reversed.
+    /// Null for non-undo operations. Used to determine which operations have already been undone.
+    /// </summary>
+    public Guid? UndoOfOperationId { get; init; }
+
+    /// <summary>
+    /// True if this operation can be undone: it is an undoable type and has not already
+    /// been undone. Computed by TransactionHistoryViewModel after loading all groups.
+    /// </summary>
+    public bool IsUndoable { get; set; }
+
+    /// <summary>
     /// The net amount from the summary row in agoras.
     /// For operations like deposit/withdrawal this is the total amount moved.
     /// </summary>

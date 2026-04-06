@@ -72,7 +72,7 @@ public partial class App : Application
                 var fundService = sp.GetRequiredService<IFundService>();
                 var portfolioService = sp.GetRequiredService<IPortfolioService>();
                 var transactionService = sp.GetRequiredService<ITransactionService>();
-                var historyVm = new TransactionHistoryViewModel(transactionService, portfolioId);
+                var historyVm = new TransactionHistoryViewModel(transactionService, fundService, portfolioId);
                 var vm = new PortfolioViewModel(fundService, portfolioService, portfolioId, portfolioName, historyVm);
                 var mainWindowFactory = sp.GetRequiredService<Func<MainWindow>>();
                 return new PortfolioWindow(vm, mainWindowFactory);

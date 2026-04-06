@@ -129,6 +129,9 @@ public sealed partial class PortfolioViewModel : ObservableObject
         _portfolioId = portfolioId;
         _portfolioName = portfolioName;
         _historyViewModel = historyViewModel;
+
+        // When an undo operation completes in the history panel, refresh fund balances.
+        _historyViewModel.UndoCompleted += async () => await LoadFundsAsync();
     }
 
     /// <summary>The portfolio ID this ViewModel operates on.</summary>

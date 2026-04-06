@@ -41,6 +41,7 @@ public partial class PortfolioWindow : Window
 
         // Subscribe to history VM events.
         _viewModel.HistoryViewModel.CsvExportPathRequested += OnCsvExportPathRequested;
+        _viewModel.HistoryViewModel.ConfirmationRequested += OnConfirmationRequested;
 
         // Load funds when the window is shown. LoadFundsAsync also triggers
         // a history reload, so both panels get populated.

@@ -182,6 +182,7 @@ public sealed class SupabaseTransactionService : ITransactionService
             OperationId = group.Key,
             CommittedAtUtc = summary?.CommittedAtUtc ?? rows.First().CommittedAtUtc,
             TransactionType = summary?.TransactionType ?? rows.First().TransactionType,
+            UndoOfOperationId = summary?.UndoOfOperationId,
             SummaryText = summary?.SummaryText,
             AmountAgoras = summary?.AmountAgoras ?? 0,
             Details = details,

@@ -317,9 +317,10 @@ The application must require explicit confirmation for:
 - Delete scheduled deposit
 
 ### 4.3 Undo rules
-- Undo is per-device
-- Undo applies only to operations executed on the same device and still available in that device’s local undo stack
+- Undo is history-based: each undoable operation in the transaction history panel shows an undo button
+- An operation is undoable if its type is one of the supported kinds (see E6.12) and it has not already been undone
 - Undo is implemented by compensating history records, not by deleting old records
+- An operation is considered "already undone" when another operation’s `undo_of_operation_id` references it
 
 ### 4.4 Scheduled deposit safety
 - Scheduled deposit execution must be exactly-once per scheduled occurrence
@@ -549,7 +550,7 @@ Supabase must provide:
 ### E4.2 Non-goals
 Supabase does not provide:
 - analytics or reporting logic
-- server-stored undo stack
+- server-stored undo state (undo eligibility is computed client-side from `undo_of_operation_id`)
 - server-side scheduled runner
 
 ### E4.3 Database tables
@@ -1264,25 +1265,32 @@ Important notes:
 - this operation preserves the current relative ownership structure, not any target configuration
 - this is the correct operation for pooled investment growth and loss in this product model
 
-### E6.12 Operation: Undo (per-device local stack)
+### E6.12 Operation: Undo (history-based, per-operation)
 Purpose:
-- Reverse the last locally executed balance-changing operation still present in the device’s local undo stack.
+- Reverse any undoable operation visible in the transaction history panel.
 
 Model:
-- each device keeps a local stack of `operation_id` values
-- only balance-changing operations are pushed to the stack
-- undo operations themselves are not pushed
+- each undoable operation in the history panel shows an "undo" button (↩) in its row
+- the button is visible only when:
+  1. the operation type is one of the supported kinds listed below
+  2. no other operation in history references this operation’s `operation_id` via `undo_of_operation_id` (i.e., it has not already been undone)
+- undo operations themselves are **not** undoable ("undo of undo" is not supported)
 
 Supported original operation kinds for undo:
-- Deposit into fund
-- Withdraw from fund
-- Transfer
-- Revalue portfolio
+- Deposit into fund (`FundDeposit`)
+- Withdraw from fund (`FundWithdrawal`)
+- Transfer (`Transfer`)
+- Revalue portfolio (`PortfolioRevalued`)
 
-Scheduled deposit executions are **never** pushed to the client undo stack. They are automatic system actions, not direct user inputs, and must not be undoable through this mechanism.
+Scheduled deposit executions (`ScheduledDepositExecuted`) are **not** undoable. They are automatic system actions, not direct user inputs.
+
+Detection of "already undone":
+- after loading full history, collect all `undo_of_operation_id` values from all transaction groups
+- any `operation_id` present in that set has been undone and must not show the undo button
+- this is computed client-side from the loaded data; no extra server query is needed
 
 High-level algorithm:
-1. pop the latest `operation_id` from the local stack
+1. user clicks the undo button on a specific operation row in the history panel
 2. query the original detail rows for that operation from history
 3. create `undo_operation_id`
 4. for each original detail row:
@@ -1292,7 +1300,8 @@ High-level algorithm:
    - summary type `Undo`
    - detail rows with `transaction_type = Undo`
    - `undo_of_operation_id = original_operation_id`
-7. do not push the undo operation itself to the stack
+7. reload the history panel — the undone operation’s undo button disappears; the new Undo entry appears
+8. reload the fund list to reflect updated balances
 
 ---
 
@@ -1620,8 +1629,9 @@ Given the same input state and `new_total_agoras`, both C# and Kotlin must produ
 ### E10.5 Undo
 - undo creates compensating history rows
 - undo does not delete old rows
-- undo is limited to the local device stack
-- undo operation itself is not pushed to the stack
+- undo is history-based: each undoable operation shows an undo button in the transaction history panel
+- an operation that has already been undone does not show the undo button
+- undo operations themselves are not undoable
 
 ### E10.6 History
 - every logical action has one summary row

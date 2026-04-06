@@ -22,7 +22,7 @@ public class PortfolioViewModelTests
 
     private PortfolioViewModel MakeVm()
     {
-        var historyVm = new TransactionHistoryViewModel(_transactionService, PortfolioId);
+        var historyVm = new TransactionHistoryViewModel(_transactionService, _fundService, PortfolioId);
         return new PortfolioViewModel(_fundService, _portfolioService, PortfolioId, PortfolioName, historyVm);
     }
 

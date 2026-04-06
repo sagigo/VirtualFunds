@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using VirtualFunds.Core.Exceptions;
 using VirtualFunds.Core.Models;
 using VirtualFunds.Core.Services;
 using VirtualFunds.Core.Utilities;
@@ -19,7 +20,17 @@ namespace VirtualFunds.WPF.ViewModels;
 public sealed partial class TransactionHistoryViewModel : ObservableObject
 {
     private readonly ITransactionService _transactionService;
+    private readonly IFundService _fundService;
     private readonly Guid _portfolioId;
+
+    /// <summary>
+    /// Transaction types that can be undone (E6.12). Structural operations,
+    /// scheduled deposits, and undo operations themselves are not undoable.
+    /// </summary>
+    private static readonly HashSet<string> UndoableTypes = new()
+    {
+        "FundDeposit", "FundWithdrawal", "Transfer", "PortfolioRevalued"
+    };
 
     /// <summary>All loaded transaction groups (unfiltered). Used as the source for client-side filtering.</summary>
     private IReadOnlyList<TransactionGroup> _allGroups = Array.Empty<TransactionGroup>();
@@ -33,6 +44,17 @@ public sealed partial class TransactionHistoryViewModel : ObservableObject
     /// and returns the chosen file path, or null if cancelled.
     /// </summary>
     public event Func<Task<string?>>? CsvExportPathRequested;
+
+    /// <summary>
+    /// Raised when the ViewModel needs a yes/no confirmation from the user (e.g. before undo).
+    /// Parameter: the message to display. Returns: true if confirmed.
+    /// </summary>
+    public event Func<string, Task<bool>>? ConfirmationRequested;
+
+    /// <summary>
+    /// Raised after a successful undo operation so the parent ViewModel can refresh fund balances.
+    /// </summary>
+    public event Func<Task>? UndoCompleted;
 
     // -----------------------------------------------------------------------------------------
     // Observable properties
@@ -86,10 +108,12 @@ public sealed partial class TransactionHistoryViewModel : ObservableObject
 
     /// <summary>Initializes the ViewModel for a specific portfolio's history.</summary>
     /// <param name="transactionService">The transaction service (injected from DI).</param>
+    /// <param name="fundService">The fund service, used for undo operations (injected from DI).</param>
     /// <param name="portfolioId">The portfolio whose history to display.</param>
-    public TransactionHistoryViewModel(ITransactionService transactionService, Guid portfolioId)
+    public TransactionHistoryViewModel(ITransactionService transactionService, IFundService fundService, Guid portfolioId)
     {
         _transactionService = transactionService;
+        _fundService = fundService;
         _portfolioId = portfolioId;
 
         // Populate the type filter options (static, from E5.2).
@@ -120,6 +144,7 @@ public sealed partial class TransactionHistoryViewModel : ObservableObject
             await Task.WhenAll(historyTask, fundsTask);
 
             _allGroups = historyTask.Result;
+            ComputeUndoability(_allGroups);
             FundFilterOptions = new ObservableCollection<FundFilterOption>(fundsTask.Result);
 
             ApplyFilters();
@@ -214,6 +239,81 @@ public sealed partial class TransactionHistoryViewModel : ObservableObject
         catch (Exception)
         {
             ErrorMessage = "שגיאה בייצוא הקובץ. נסה שוב.";
+        }
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Undo (E6.12 — history-based)
+    // -----------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Undoes the specified operation by creating compensating history rows (E6.12).
+    /// Triggered from the per-row undo button in the transaction history panel.
+    /// </summary>
+    [RelayCommand]
+    private async Task UndoOperationAsync(TransactionGroup group)
+    {
+        if (!group.IsUndoable)
+            return;
+
+        if (ConfirmationRequested is null ||
+            !await ConfirmationRequested.Invoke($"האם לבטל את הפעולה \"{group.TransactionTypeLabel}\"?"))
+            return;
+
+        ErrorMessage = string.Empty;
+        IsLoading = true;
+
+        try
+        {
+            await _fundService.UndoOperationAsync(_portfolioId, group.OperationId);
+
+            // Reload history to reflect the new undo transaction and update IsUndoable flags.
+            await LoadHistoryAsync();
+
+            // Notify parent ViewModel to refresh fund balances.
+            if (UndoCompleted is not null)
+                await UndoCompleted.Invoke();
+        }
+        catch (InsufficientFundBalanceException)
+        {
+            ErrorMessage = "לא ניתן לבטל — הפעולה תגרום ליתרה שלילית באחת הקרנות.";
+        }
+        catch (PortfolioClosedException)
+        {
+            ErrorMessage = "לא ניתן לבצע פעולה בתיק סגור.";
+        }
+        catch (FundNotFoundException)
+        {
+            ErrorMessage = "אחת הקרנות שהושפעו מהפעולה לא נמצאה.";
+        }
+        catch (Exception)
+        {
+            ErrorMessage = "שגיאה בביטול הפעולה. נסה שוב מאוחר יותר.";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Computes and sets <see cref="TransactionGroup.IsUndoable"/> on each group.
+    /// A group is undoable when its transaction type is in <see cref="UndoableTypes"/>
+    /// and no other group references its operation_id via <c>UndoOfOperationId</c>.
+    /// </summary>
+    private static void ComputeUndoability(IReadOnlyList<TransactionGroup> groups)
+    {
+        // Collect all operation_ids that have already been undone.
+        var undoneOperationIds = new HashSet<Guid>(
+            groups
+                .Where(g => g.UndoOfOperationId.HasValue)
+                .Select(g => g.UndoOfOperationId!.Value)); // ! safe: filtered by HasValue above
+
+        foreach (var group in groups)
+        {
+            group.IsUndoable =
+                UndoableTypes.Contains(group.TransactionType) &&
+                !undoneOperationIds.Contains(group.OperationId);
         }
     }
 

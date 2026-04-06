@@ -64,10 +64,11 @@ public interface IFundService
     /// <param name="portfolioId">The portfolio that owns the fund.</param>
     /// <param name="fundId">The fund to deposit into.</param>
     /// <param name="amountAgoras">The amount to deposit in agoras (must be &gt; 0).</param>
+    /// <returns>The operation_id of the committed operation, for undo stack tracking.</returns>
     /// <exception cref="Exceptions.PortfolioClosedException">The portfolio has been closed.</exception>
     /// <exception cref="Exceptions.FundNotFoundException">Fund not found in the portfolio.</exception>
     /// <exception cref="Exceptions.NegativeFundAmountException">Amount is not positive.</exception>
-    Task DepositAsync(Guid portfolioId, Guid fundId, long amountAgoras);
+    Task<Guid> DepositAsync(Guid portfolioId, Guid fundId, long amountAgoras);
 
     /// <summary>
     /// Withdraws money from a single fund, decreasing the portfolio total (E6.9).
@@ -76,11 +77,12 @@ public interface IFundService
     /// <param name="portfolioId">The portfolio that owns the fund.</param>
     /// <param name="fundId">The fund to withdraw from.</param>
     /// <param name="amountAgoras">The amount to withdraw in agoras (must be &gt; 0).</param>
+    /// <returns>The operation_id of the committed operation, for undo stack tracking.</returns>
     /// <exception cref="Exceptions.PortfolioClosedException">The portfolio has been closed.</exception>
     /// <exception cref="Exceptions.FundNotFoundException">Fund not found in the portfolio.</exception>
     /// <exception cref="Exceptions.NegativeFundAmountException">Amount is not positive.</exception>
     /// <exception cref="Exceptions.InsufficientFundBalanceException">The fund balance is insufficient.</exception>
-    Task WithdrawAsync(Guid portfolioId, Guid fundId, long amountAgoras);
+    Task<Guid> WithdrawAsync(Guid portfolioId, Guid fundId, long amountAgoras);
 
     /// <summary>
     /// Transfers money between two funds in the same portfolio without changing the total (E6.10).
@@ -89,12 +91,13 @@ public interface IFundService
     /// <param name="sourceFundId">The fund to transfer from.</param>
     /// <param name="destinationFundId">The fund to transfer to.</param>
     /// <param name="amountAgoras">The amount to transfer in agoras (must be &gt; 0).</param>
+    /// <returns>The operation_id of the committed operation, for undo stack tracking.</returns>
     /// <exception cref="Exceptions.PortfolioClosedException">The portfolio has been closed.</exception>
     /// <exception cref="Exceptions.FundNotFoundException">A referenced fund was not found.</exception>
     /// <exception cref="Exceptions.NegativeFundAmountException">Amount is not positive.</exception>
     /// <exception cref="Exceptions.InsufficientFundBalanceException">The source fund balance is insufficient.</exception>
     /// <exception cref="Exceptions.SameFundTransferException">Source and destination are the same fund.</exception>
-    Task TransferAsync(Guid portfolioId, Guid sourceFundId, Guid destinationFundId, long amountAgoras);
+    Task<Guid> TransferAsync(Guid portfolioId, Guid sourceFundId, Guid destinationFundId, long amountAgoras);
 
     // -----------------------------------------------------------------------------------------
     // Portfolio-level money operations (E6.11)
@@ -108,8 +111,33 @@ public interface IFundService
     /// </summary>
     /// <param name="portfolioId">The portfolio to revalue.</param>
     /// <param name="newTotalAgoras">The desired new total in agoras (must be &gt; 0).</param>
+    /// <returns>
+    /// The operation_id of the committed operation for undo stack tracking,
+    /// or <c>null</c> if the operation was a no-op (same total or all deltas zero).
+    /// </returns>
     /// <exception cref="Exceptions.NegativeFundAmountException">New total is not positive.</exception>
     /// <exception cref="Exceptions.PortfolioTotalIsZeroException">Current total is zero (cannot compute proportions).</exception>
     /// <exception cref="Exceptions.PortfolioClosedException">The portfolio has been closed.</exception>
-    Task RevaluePortfolioAsync(Guid portfolioId, long newTotalAgoras);
+    Task<Guid?> RevaluePortfolioAsync(Guid portfolioId, long newTotalAgoras);
+
+    // -----------------------------------------------------------------------------------------
+    // Undo (E6.12)
+    // -----------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Reverses a previously committed balance-changing operation by creating compensating
+    /// transaction rows with negated amounts (E6.12).
+    /// <para>
+    /// Queries the original detail rows for the given operation, negates each amount,
+    /// and commits the compensating operation via <c>rpc_commit_fund_operation</c>
+    /// with transaction type "Undo" and <c>undo_of_operation_id</c> set to the original.
+    /// </para>
+    /// </summary>
+    /// <param name="portfolioId">The portfolio that owns the operation.</param>
+    /// <param name="originalOperationId">The operation_id to undo (from the local undo stack).</param>
+    /// <exception cref="Exceptions.PortfolioClosedException">The portfolio has been closed.</exception>
+    /// <exception cref="Exceptions.InsufficientFundBalanceException">
+    /// Applying compensating amounts would create a negative fund balance.
+    /// </exception>
+    Task UndoOperationAsync(Guid portfolioId, Guid originalOperationId);
 }
