@@ -52,6 +52,8 @@ public partial class App : Application
         services.AddSingleton<IPortfolioService, SupabasePortfolioService>();
         services.AddSingleton<IFundService, SupabaseFundService>();
         services.AddSingleton<ITransactionService, SupabaseTransactionService>();
+        services.AddSingleton<IScheduledDepositService, SupabaseScheduledDepositService>();
+        services.AddSingleton<IDeviceIdStore, LocalDeviceIdStore>();
 
         // Windows and ViewModels are transient — a fresh instance is created each time
         // (e.g., AuthWindow re-opens after sign-out).
@@ -72,8 +74,10 @@ public partial class App : Application
                 var fundService = sp.GetRequiredService<IFundService>();
                 var portfolioService = sp.GetRequiredService<IPortfolioService>();
                 var transactionService = sp.GetRequiredService<ITransactionService>();
+                var scheduledDepositService = sp.GetRequiredService<IScheduledDepositService>();
+                var deviceIdStore = sp.GetRequiredService<IDeviceIdStore>();
                 var historyVm = new TransactionHistoryViewModel(transactionService, fundService, portfolioId);
-                var vm = new PortfolioViewModel(fundService, portfolioService, portfolioId, portfolioName, historyVm);
+                var vm = new PortfolioViewModel(fundService, portfolioService, scheduledDepositService, deviceIdStore, portfolioId, portfolioName, historyVm);
                 var mainWindowFactory = sp.GetRequiredService<Func<MainWindow>>();
                 return new PortfolioWindow(vm, mainWindowFactory);
             });

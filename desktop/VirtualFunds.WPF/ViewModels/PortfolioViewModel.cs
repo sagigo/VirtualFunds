@@ -22,6 +22,8 @@ public sealed partial class PortfolioViewModel : ObservableObject
 {
     private readonly IFundService _fundService;
     private readonly IPortfolioService _portfolioService;
+    private readonly IScheduledDepositService _scheduledDepositService;
+    private readonly IDeviceIdStore _deviceIdStore;
     private readonly Guid _portfolioId;
     private readonly TransactionHistoryViewModel _historyViewModel;
 
@@ -69,6 +71,37 @@ public sealed partial class PortfolioViewModel : ObservableObject
     /// </summary>
     public event Action? BackRequested;
 
+    /// <summary>
+    /// Raised when the user wants to manage scheduled deposits (PR-8).
+    /// The View should show the <see cref="ScheduledDepositsViewModel"/> in a dialog.
+    /// </summary>
+    public event Func<ScheduledDepositsViewModel, Task>? ScheduledDepositsRequested;
+
+    // -----------------------------------------------------------------------------------------
+    // Sort state (E5.10) — presentation-only, no money logic depends on this
+    // -----------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Remembers the current custom order as a sequence of fund IDs.
+    /// Populated when the user switches to Custom mode or moves funds.
+    /// In-memory only — resets when the app restarts (Option A, YAGNI).
+    /// </summary>
+    private List<Guid> _customOrderedFundIds = new();
+
+    /// <summary>Available sort options shown in the sort dropdown.</summary>
+    public IReadOnlyList<FundSortOption> SortOptions { get; } = new List<FundSortOption>
+    {
+        new("תאריך יצירה", FundSortMode.CreatedDate),
+        new("שם", FundSortMode.Name),
+        new("יתרה", FundSortMode.Balance),
+        new("אחוז הקצאה", FundSortMode.AllocationPercent),
+        new("מותאם אישית", FundSortMode.Custom),
+    };
+
+    /// <summary>The currently selected sort option (default: by name).</summary>
+    [ObservableProperty]
+    private FundSortOption _selectedSortOption = null!; // assigned in constructor before any use
+
     // -----------------------------------------------------------------------------------------
     // Observable properties
     // -----------------------------------------------------------------------------------------
@@ -114,21 +147,30 @@ public sealed partial class PortfolioViewModel : ObservableObject
     /// <summary>Initializes the ViewModel for a specific portfolio.</summary>
     /// <param name="fundService">The fund service (injected from DI).</param>
     /// <param name="portfolioService">The portfolio service, used for rename and delete (injected from DI).</param>
+    /// <param name="scheduledDepositService">The scheduled deposit service (PR-8).</param>
+    /// <param name="deviceIdStore">The device ID store for scheduled deposit execution (E8.4).</param>
     /// <param name="portfolioId">The ID of the portfolio to display.</param>
     /// <param name="portfolioName">The display name of the portfolio.</param>
     /// <param name="historyViewModel">The history sub-ViewModel for the History tab (PR-7).</param>
     public PortfolioViewModel(
         IFundService fundService,
         IPortfolioService portfolioService,
+        IScheduledDepositService scheduledDepositService,
+        IDeviceIdStore deviceIdStore,
         Guid portfolioId,
         string portfolioName,
         TransactionHistoryViewModel historyViewModel)
     {
         _fundService = fundService;
         _portfolioService = portfolioService;
+        _scheduledDepositService = scheduledDepositService;
+        _deviceIdStore = deviceIdStore;
         _portfolioId = portfolioId;
         _portfolioName = portfolioName;
         _historyViewModel = historyViewModel;
+
+        // Default sort mode: alphabetical by name (matches server order, E5.10).
+        _selectedSortOption = SortOptions[0];
 
         // When an undo operation completes in the history panel, refresh fund balances.
         _historyViewModel.UndoCompleted += async () => await LoadFundsAsync();
@@ -158,7 +200,9 @@ public sealed partial class PortfolioViewModel : ObservableObject
         {
             var result = await _fundService.GetFundsAsync(_portfolioId);
 
-            Funds = new ObservableCollection<FundListItem>(result);
+            // Apply the current sort mode. For Custom, re-orders by remembered IDs;
+            // new funds (not yet in the custom order) are appended alphabetically.
+            Funds = new ObservableCollection<FundListItem>(ApplySort(result));
             IsEmpty = Funds.Count == 0;
 
             // Compute formatted total from the loaded funds.
@@ -646,6 +690,50 @@ public sealed partial class PortfolioViewModel : ObservableObject
         }
     }
 
+    // -----------------------------------------------------------------------------------------
+    // Scheduled deposits (PR-8, E8)
+    // -----------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Opens the scheduled deposits management dialog.
+    /// Creates a <see cref="ScheduledDepositsViewModel"/> and raises the event for the View.
+    /// After the dialog closes, refreshes fund balances in case deposits were modified.
+    /// </summary>
+    [RelayCommand]
+    private async Task ManageScheduledDepositsAsync()
+    {
+        if (ScheduledDepositsRequested == null) return;
+
+        var vm = new ScheduledDepositsViewModel(_scheduledDepositService, _fundService, _portfolioId);
+        await ScheduledDepositsRequested.Invoke(vm);
+
+        // Refresh funds — the user may have created/deleted/toggled deposits,
+        // and the dialog may have triggered executions that changed balances.
+        await LoadFundsAsync();
+    }
+
+    /// <summary>
+    /// Triggers execution of due scheduled deposits for this portfolio (E8.4, E8.9).
+    /// Called on window load and periodically by a timer in the View.
+    /// If any deposits executed, refreshes fund balances and transaction history.
+    /// </summary>
+    public async Task TriggerScheduledDepositExecutionAsync()
+    {
+        try
+        {
+            var deviceId = await _deviceIdStore.GetOrCreateAsync();
+            var executedCount = await _scheduledDepositService.ExecuteDueDepositsAsync(_portfolioId, deviceId);
+
+            if (executedCount > 0)
+                await LoadFundsAsync();
+        }
+        catch
+        {
+            // Execution trigger failures are silent — the next trigger will retry.
+            // No user-facing error because this is a background operation.
+        }
+    }
+
     /// <summary>
     /// Navigates back to the portfolio list.
     /// </summary>
@@ -653,5 +741,132 @@ public sealed partial class PortfolioViewModel : ObservableObject
     private void GoBack()
     {
         BackRequested?.Invoke();
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Sort (E5.10) — presentation-only, must not influence any money algorithm
+    // -----------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Moves the selected fund one position up in the list.
+    /// Only available in Custom sort mode.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanMoveSelectedFundUp))]
+    private void MoveSelectedFundUp()
+    {
+        var idx = Funds.IndexOf(SelectedFund!);
+        Funds.Move(idx, idx - 1);
+        // Sync the remembered custom order to the new visual order.
+        _customOrderedFundIds = Funds.Select(f => f.FundId).ToList();
+        MoveSelectedFundUpCommand.NotifyCanExecuteChanged();
+        MoveSelectedFundDownCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>True when the selected fund can move up (not already first, Custom mode active).</summary>
+    private bool CanMoveSelectedFundUp() =>
+        SelectedSortOption.Mode == FundSortMode.Custom &&
+        SelectedFund != null &&
+        Funds.Count > 1 &&
+        Funds.IndexOf(SelectedFund) > 0;
+
+    /// <summary>
+    /// Moves the selected fund one position down in the list.
+    /// Only available in Custom sort mode.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanMoveSelectedFundDown))]
+    private void MoveSelectedFundDown()
+    {
+        var idx = Funds.IndexOf(SelectedFund!);
+        Funds.Move(idx, idx + 1);
+        // Sync the remembered custom order to the new visual order.
+        _customOrderedFundIds = Funds.Select(f => f.FundId).ToList();
+        MoveSelectedFundUpCommand.NotifyCanExecuteChanged();
+        MoveSelectedFundDownCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>True when the selected fund can move down (not already last, Custom mode active).</summary>
+    private bool CanMoveSelectedFundDown() =>
+        SelectedSortOption.Mode == FundSortMode.Custom &&
+        SelectedFund != null &&
+        Funds.Count > 1 &&
+        Funds.IndexOf(SelectedFund) < Funds.Count - 1;
+
+    /// <summary>
+    /// Returns <paramref name="funds"/> sorted according to the current <see cref="SelectedSortOption"/>.
+    /// For <see cref="FundSortMode.Custom"/>, funds are ordered by <see cref="_customOrderedFundIds"/>;
+    /// any funds not yet in the remembered list are appended alphabetically, and the list is updated
+    /// to reflect deletions and additions.
+    /// </summary>
+    internal IReadOnlyList<FundListItem> ApplySort(IReadOnlyList<FundListItem> funds)
+    {
+        return SelectedSortOption.Mode switch
+        {
+            FundSortMode.Balance => funds.OrderByDescending(f => f.BalanceAgoras).ToList(),
+            FundSortMode.AllocationPercent => funds.OrderByDescending(f => f.AllocationPercent).ToList(),
+            FundSortMode.CreatedDate => funds.OrderBy(f => f.CreatedAtUtc).ToList(),
+            FundSortMode.Custom => ApplyCustomOrder(funds),
+            _ => funds.OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList(), // Name (default)
+        };
+    }
+
+    /// <summary>
+    /// Applies the remembered custom order to <paramref name="funds"/>.
+    /// Funds in <see cref="_customOrderedFundIds"/> appear first in that order.
+    /// New funds (not yet remembered) are appended in alphabetical order.
+    /// Deleted fund IDs are silently dropped.
+    /// The remembered order is updated to match the result.
+    /// </summary>
+    private IReadOnlyList<FundListItem> ApplyCustomOrder(IReadOnlyList<FundListItem> funds)
+    {
+        var byId = funds.ToDictionary(f => f.FundId);
+        var ordered = new List<FundListItem>(funds.Count);
+
+        // First: funds already in the remembered order.
+        foreach (var id in _customOrderedFundIds)
+        {
+            if (byId.TryGetValue(id, out var fund))
+                ordered.Add(fund);
+        }
+
+        // Then: any new funds not yet in the remembered order, alphabetically.
+        var remembered = _customOrderedFundIds.ToHashSet();
+        var newFunds = funds
+            .Where(f => !remembered.Contains(f.FundId))
+            .OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase);
+        ordered.AddRange(newFunds);
+
+        // Keep the remembered list in sync (removes deleted IDs, adds new ones).
+        _customOrderedFundIds = ordered.Select(f => f.FundId).ToList();
+
+        return ordered;
+    }
+
+    /// <summary>
+    /// Called by the source generator when <see cref="SelectedSortOption"/> changes.
+    /// Re-sorts the current fund list and refreshes the move-button enabled state.
+    /// </summary>
+    partial void OnSelectedSortOptionChanged(FundSortOption value)
+    {
+        if (Funds.Count == 0) return;
+
+        // When entering Custom mode for the first time, seed the order from the current display order.
+        if (value.Mode == FundSortMode.Custom && _customOrderedFundIds.Count == 0)
+            _customOrderedFundIds = Funds.Select(f => f.FundId).ToList();
+
+        var sorted = ApplySort(Funds.ToList());
+        Funds = new ObservableCollection<FundListItem>(sorted);
+
+        MoveSelectedFundUpCommand.NotifyCanExecuteChanged();
+        MoveSelectedFundDownCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>
+    /// Called by the source generator when <see cref="SelectedFund"/> changes.
+    /// Refreshes the move-button enabled state.
+    /// </summary>
+    partial void OnSelectedFundChanged(FundListItem? value)
+    {
+        MoveSelectedFundUpCommand.NotifyCanExecuteChanged();
+        MoveSelectedFundDownCommand.NotifyCanExecuteChanged();
     }
 }

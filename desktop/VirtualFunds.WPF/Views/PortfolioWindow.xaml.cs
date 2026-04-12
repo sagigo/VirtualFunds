@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Threading;
 using Microsoft.Win32;
 using VirtualFunds.Core.Models;
 using VirtualFunds.WPF.ViewModels;
@@ -17,6 +18,7 @@ public partial class PortfolioWindow : Window
 {
     private readonly PortfolioViewModel _viewModel;
     private readonly Func<MainWindow> _mainWindowFactory;
+    private readonly DispatcherTimer _executionTimer;
 
     /// <summary>
     /// Initializes PortfolioWindow with its ViewModel and a factory for MainWindow (back navigation).
@@ -38,14 +40,27 @@ public partial class PortfolioWindow : Window
         _viewModel.AmountInputRequested += OnAmountInputRequested;
         _viewModel.TransferRequested += OnTransferRequested;
         _viewModel.BackRequested += OnBackRequested;
+        _viewModel.ScheduledDepositsRequested += OnScheduledDepositsRequested;
 
         // Subscribe to history VM events.
         _viewModel.HistoryViewModel.CsvExportPathRequested += OnCsvExportPathRequested;
         _viewModel.HistoryViewModel.ConfirmationRequested += OnConfirmationRequested;
 
+        // Scheduled deposit execution timer (E8.4): triggers every 5 minutes while the window is open.
+        _executionTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(5) };
+        _executionTimer.Tick += async (_, _) => await _viewModel.TriggerScheduledDepositExecutionAsync();
+
         // Load funds when the window is shown. LoadFundsAsync also triggers
         // a history reload, so both panels get populated.
-        Loaded += async (_, _) => await _viewModel.LoadFundsCommand.ExecuteAsync(null);
+        // Also trigger scheduled deposit execution on load (E8.4: on app start / resume).
+        Loaded += async (_, _) =>
+        {
+            await _viewModel.LoadFundsCommand.ExecuteAsync(null);
+            _ = _viewModel.TriggerScheduledDepositExecutionAsync();
+            _executionTimer.Start();
+        };
+
+        Closed += (_, _) => _executionTimer.Stop();
     }
 
     /// <summary>
@@ -174,6 +189,16 @@ public partial class PortfolioWindow : Window
             : null;
 
         return Task.FromResult(result);
+    }
+
+    /// <summary>
+    /// Shows the scheduled deposits management dialog (PR-8).
+    /// </summary>
+    private Task OnScheduledDepositsRequested(ScheduledDepositsViewModel vm)
+    {
+        var dialog = new ScheduledDepositsDialog(vm) { Owner = this };
+        dialog.ShowDialog();
+        return Task.CompletedTask;
     }
 
     /// <summary>

@@ -19,11 +19,13 @@ public class PortfolioViewModelTests
     private readonly IFundService _fundService = Substitute.For<IFundService>();
     private readonly IPortfolioService _portfolioService = Substitute.For<IPortfolioService>();
     private readonly ITransactionService _transactionService = Substitute.For<ITransactionService>();
+    private readonly IScheduledDepositService _scheduledDepositService = Substitute.For<IScheduledDepositService>();
+    private readonly IDeviceIdStore _deviceIdStore = Substitute.For<IDeviceIdStore>();
 
     private PortfolioViewModel MakeVm()
     {
         var historyVm = new TransactionHistoryViewModel(_transactionService, _fundService, PortfolioId);
-        return new PortfolioViewModel(_fundService, _portfolioService, PortfolioId, PortfolioName, historyVm);
+        return new PortfolioViewModel(_fundService, _portfolioService, _scheduledDepositService, _deviceIdStore, PortfolioId, PortfolioName, historyVm);
     }
 
     // -----------------------------------------------------------------------------------------
@@ -1050,5 +1052,270 @@ public class PortfolioViewModelTests
         await vm.DeletePortfolioCommand.ExecuteAsync(null);
 
         Assert.NotEmpty(vm.ErrorMessage);
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Sort (E5.10)
+    // -----------------------------------------------------------------------------------------
+
+    private static FundListItem MakeSortItem(string name, long balance, double allocation, DateTime? createdAt = null) => new()
+    {
+        FundId = Guid.NewGuid(),
+        Name = name,
+        BalanceAgoras = balance,
+        AllocationPercent = allocation,
+        CreatedAtUtc = createdAt ?? DateTime.UtcNow,
+    };
+
+    [Fact]
+    public void DefaultSortMode_IsName()
+    {
+        var vm = MakeVm();
+        Assert.Equal(FundSortMode.Name, vm.SelectedSortOption.Mode);
+    }
+
+    [Fact]
+    public async Task SortByName_OrdersAlphabetically()
+    {
+        var items = new List<FundListItem>
+        {
+            MakeSortItem("ג", 300, 30),
+            MakeSortItem("א", 100, 10),
+            MakeSortItem("ב", 200, 20),
+        };
+        _fundService.GetFundsAsync(PortfolioId).Returns(items);
+
+        var vm = MakeVm();
+        await vm.LoadFundsCommand.ExecuteAsync(null);
+
+        Assert.Equal("א", vm.Funds[0].Name);
+        Assert.Equal("ב", vm.Funds[1].Name);
+        Assert.Equal("ג", vm.Funds[2].Name);
+    }
+
+    [Fact]
+    public async Task SortByBalance_OrdersHighestFirst()
+    {
+        var items = new List<FundListItem>
+        {
+            MakeSortItem("א", 100, 10),
+            MakeSortItem("ב", 300, 30),
+            MakeSortItem("ג", 200, 20),
+        };
+        _fundService.GetFundsAsync(PortfolioId).Returns(items);
+
+        var vm = MakeVm();
+        await vm.LoadFundsCommand.ExecuteAsync(null);
+
+        vm.SelectedSortOption = vm.SortOptions.First(o => o.Mode == FundSortMode.Balance);
+
+        Assert.Equal("ב", vm.Funds[0].Name); // 300 — highest
+        Assert.Equal("ג", vm.Funds[1].Name); // 200
+        Assert.Equal("א", vm.Funds[2].Name); // 100 — lowest
+    }
+
+    [Fact]
+    public async Task SortByAllocationPercent_OrdersHighestFirst()
+    {
+        var items = new List<FundListItem>
+        {
+            MakeSortItem("א", 100, 10),
+            MakeSortItem("ב", 300, 60),
+            MakeSortItem("ג", 200, 30),
+        };
+        _fundService.GetFundsAsync(PortfolioId).Returns(items);
+
+        var vm = MakeVm();
+        await vm.LoadFundsCommand.ExecuteAsync(null);
+
+        vm.SelectedSortOption = vm.SortOptions.First(o => o.Mode == FundSortMode.AllocationPercent);
+
+        Assert.Equal("ב", vm.Funds[0].Name); // 60% — highest
+        Assert.Equal("ג", vm.Funds[1].Name); // 30%
+        Assert.Equal("א", vm.Funds[2].Name); // 10% — lowest
+    }
+
+    [Fact]
+    public async Task SortByCreatedDate_OrdersOldestFirst()
+    {
+        var now = DateTime.UtcNow;
+        var items = new List<FundListItem>
+        {
+            MakeSortItem("ג", 300, 30, now),
+            MakeSortItem("א", 100, 10, now.AddDays(-2)),
+            MakeSortItem("ב", 200, 20, now.AddDays(-1)),
+        };
+        _fundService.GetFundsAsync(PortfolioId).Returns(items);
+
+        var vm = MakeVm();
+        await vm.LoadFundsCommand.ExecuteAsync(null);
+
+        vm.SelectedSortOption = vm.SortOptions.First(o => o.Mode == FundSortMode.CreatedDate);
+
+        Assert.Equal("א", vm.Funds[0].Name); // oldest
+        Assert.Equal("ב", vm.Funds[1].Name);
+        Assert.Equal("ג", vm.Funds[2].Name); // newest
+    }
+
+    [Fact]
+    public async Task CustomSort_MoveUp_ChangesOrder()
+    {
+        var items = new List<FundListItem>
+        {
+            MakeSortItem("א", 100, 33),
+            MakeSortItem("ב", 200, 33),
+            MakeSortItem("ג", 300, 34),
+        };
+        _fundService.GetFundsAsync(PortfolioId).Returns(items);
+
+        var vm = MakeVm();
+        await vm.LoadFundsCommand.ExecuteAsync(null);
+
+        vm.SelectedSortOption = vm.SortOptions.First(o => o.Mode == FundSortMode.Custom);
+        vm.SelectedFund = vm.Funds[1]; // "ב"
+
+        vm.MoveSelectedFundUpCommand.Execute(null);
+
+        Assert.Equal("ב", vm.Funds[0].Name);
+        Assert.Equal("א", vm.Funds[1].Name);
+        Assert.Equal("ג", vm.Funds[2].Name);
+    }
+
+    [Fact]
+    public async Task CustomSort_MoveDown_ChangesOrder()
+    {
+        var items = new List<FundListItem>
+        {
+            MakeSortItem("א", 100, 33),
+            MakeSortItem("ב", 200, 33),
+            MakeSortItem("ג", 300, 34),
+        };
+        _fundService.GetFundsAsync(PortfolioId).Returns(items);
+
+        var vm = MakeVm();
+        await vm.LoadFundsCommand.ExecuteAsync(null);
+
+        vm.SelectedSortOption = vm.SortOptions.First(o => o.Mode == FundSortMode.Custom);
+        vm.SelectedFund = vm.Funds[0]; // "א"
+
+        vm.MoveSelectedFundDownCommand.Execute(null);
+
+        Assert.Equal("ב", vm.Funds[0].Name);
+        Assert.Equal("א", vm.Funds[1].Name);
+        Assert.Equal("ג", vm.Funds[2].Name);
+    }
+
+    [Fact]
+    public async Task CustomSort_ReloadPreservesOrder()
+    {
+        var idA = Guid.NewGuid();
+        var idB = Guid.NewGuid();
+        var idC = Guid.NewGuid();
+
+        var items = new List<FundListItem>
+        {
+            new() { FundId = idA, Name = "א", BalanceAgoras = 100, AllocationPercent = 33, CreatedAtUtc = DateTime.UtcNow },
+            new() { FundId = idB, Name = "ב", BalanceAgoras = 200, AllocationPercent = 33, CreatedAtUtc = DateTime.UtcNow },
+            new() { FundId = idC, Name = "ג", BalanceAgoras = 300, AllocationPercent = 34, CreatedAtUtc = DateTime.UtcNow },
+        };
+        _fundService.GetFundsAsync(PortfolioId).Returns(items);
+
+        var vm = MakeVm();
+        await vm.LoadFundsCommand.ExecuteAsync(null);
+
+        vm.SelectedSortOption = vm.SortOptions.First(o => o.Mode == FundSortMode.Custom);
+        vm.SelectedFund = vm.Funds.First(f => f.Name == "ב");
+        vm.MoveSelectedFundUpCommand.Execute(null); // order is now: ב, א, ג
+
+        // Simulate a reload (e.g., after a deposit) — service returns same funds in alphabetical order.
+        await vm.LoadFundsCommand.ExecuteAsync(null);
+
+        // Custom order must be preserved across the reload.
+        Assert.Equal("ב", vm.Funds[0].Name);
+        Assert.Equal("א", vm.Funds[1].Name);
+        Assert.Equal("ג", vm.Funds[2].Name);
+    }
+
+    [Fact]
+    public async Task CustomSort_NewFundAfterReload_AppendsAlphabetically()
+    {
+        var idA = Guid.NewGuid();
+        var idB = Guid.NewGuid();
+        var idNew = Guid.NewGuid();
+
+        var initialItems = new List<FundListItem>
+        {
+            new() { FundId = idA, Name = "א", BalanceAgoras = 100, AllocationPercent = 50, CreatedAtUtc = DateTime.UtcNow },
+            new() { FundId = idB, Name = "ב", BalanceAgoras = 100, AllocationPercent = 50, CreatedAtUtc = DateTime.UtcNow },
+        };
+        _fundService.GetFundsAsync(PortfolioId).Returns(initialItems);
+
+        var vm = MakeVm();
+        await vm.LoadFundsCommand.ExecuteAsync(null);
+
+        vm.SelectedSortOption = vm.SortOptions.First(o => o.Mode == FundSortMode.Custom);
+        vm.SelectedFund = vm.Funds.First(f => f.Name == "ב");
+        vm.MoveSelectedFundUpCommand.Execute(null); // order: ב, א
+
+        // A new fund is added and service now returns three funds.
+        var updatedItems = new List<FundListItem>
+        {
+            new() { FundId = idA, Name = "א", BalanceAgoras = 100, AllocationPercent = 33, CreatedAtUtc = DateTime.UtcNow },
+            new() { FundId = idB, Name = "ב", BalanceAgoras = 100, AllocationPercent = 33, CreatedAtUtc = DateTime.UtcNow },
+            new() { FundId = idNew, Name = "ד", BalanceAgoras = 100, AllocationPercent = 34, CreatedAtUtc = DateTime.UtcNow },
+        };
+        _fundService.GetFundsAsync(PortfolioId).Returns(updatedItems);
+
+        await vm.LoadFundsCommand.ExecuteAsync(null);
+
+        // Existing remembered order is preserved; new fund is appended.
+        Assert.Equal("ב", vm.Funds[0].Name);
+        Assert.Equal("א", vm.Funds[1].Name);
+        Assert.Equal("ד", vm.Funds[2].Name); // appended at end
+    }
+
+    [Fact]
+    public async Task MoveUp_NotAvailable_WhenNotCustomMode()
+    {
+        var items = new List<FundListItem> { MakeSortItem("א", 100, 50), MakeSortItem("ב", 200, 50) };
+        _fundService.GetFundsAsync(PortfolioId).Returns(items);
+
+        var vm = MakeVm();
+        await vm.LoadFundsCommand.ExecuteAsync(null);
+
+        vm.SelectedFund = vm.Funds[1];
+        // Sort mode is Name (default), not Custom.
+
+        Assert.False(vm.MoveSelectedFundUpCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task MoveUp_NotAvailable_WhenAlreadyFirst()
+    {
+        var items = new List<FundListItem> { MakeSortItem("א", 100, 50), MakeSortItem("ב", 200, 50) };
+        _fundService.GetFundsAsync(PortfolioId).Returns(items);
+
+        var vm = MakeVm();
+        await vm.LoadFundsCommand.ExecuteAsync(null);
+
+        vm.SelectedSortOption = vm.SortOptions.First(o => o.Mode == FundSortMode.Custom);
+        vm.SelectedFund = vm.Funds[0]; // first item
+
+        Assert.False(vm.MoveSelectedFundUpCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task MoveDown_NotAvailable_WhenAlreadyLast()
+    {
+        var items = new List<FundListItem> { MakeSortItem("א", 100, 50), MakeSortItem("ב", 200, 50) };
+        _fundService.GetFundsAsync(PortfolioId).Returns(items);
+
+        var vm = MakeVm();
+        await vm.LoadFundsCommand.ExecuteAsync(null);
+
+        vm.SelectedSortOption = vm.SortOptions.First(o => o.Mode == FundSortMode.Custom);
+        vm.SelectedFund = vm.Funds[^1]; // last item
+
+        Assert.False(vm.MoveSelectedFundDownCommand.CanExecute(null));
     }
 }

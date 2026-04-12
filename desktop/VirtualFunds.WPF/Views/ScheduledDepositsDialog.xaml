@@ -1,0 +1,117 @@
+<Window x:Class="VirtualFunds.WPF.Views.ScheduledDepositsDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="הפקדות מתוזמנות"
+        Height="520" Width="700"
+        WindowStartupLocation="CenterOwner"
+        FlowDirection="RightToLeft">
+    <DockPanel Margin="16">
+
+        <!-- Header: title + create button -->
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+            <Button Content="+ חדש"
+                    Command="{Binding CreateScheduledDepositCommand}"
+                    IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBooleanConverter}}"
+                    HorizontalAlignment="Left"
+                    Padding="12,4" />
+            <TextBlock Text="הפקדות מתוזמנות"
+                       FontSize="18"
+                       FontWeight="Bold"
+                       VerticalAlignment="Center" />
+        </DockPanel>
+
+        <!-- Error message -->
+        <TextBlock DockPanel.Dock="Top"
+                   Text="{Binding ErrorMessage}"
+                   Foreground="Red"
+                   TextWrapping="Wrap"
+                   Margin="0,0,0,4"
+                   Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibilityConverter}}" />
+
+        <!-- Loading indicator -->
+        <TextBlock DockPanel.Dock="Top"
+                   Text="טוען..."
+                   Margin="0,0,0,4"
+                   Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+        <!-- Bottom: action buttons -->
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
+            <Button Content="ערוך"
+                    Command="{Binding EditScheduledDepositCommand}"
+                    CommandParameter="{Binding SelectedDeposit}"
+                    IsEnabled="{Binding CanExecuteDepositOperation}"
+                    Padding="10,4" />
+            <Button Content="הפעל/השבת"
+                    Command="{Binding ToggleEnabledCommand}"
+                    CommandParameter="{Binding SelectedDeposit}"
+                    IsEnabled="{Binding CanExecuteDepositOperation}"
+                    Padding="10,4"
+                    Margin="8,0,0,0" />
+            <Button Content="מחק"
+                    Command="{Binding DeleteScheduledDepositCommand}"
+                    CommandParameter="{Binding SelectedDeposit}"
+                    IsEnabled="{Binding CanExecuteDepositOperation}"
+                    Padding="10,4"
+                    Margin="8,0,0,0" />
+            <Button Content="סגור"
+                    IsCancel="True"
+                    Padding="10,4"
+                    Margin="24,0,0,0" />
+        </StackPanel>
+
+        <!-- Empty state -->
+        <TextBlock x:Name="EmptyStateText"
+                   Text="אין הפקדות מתוזמנות."
+                   Foreground="Gray"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   FontSize="14"
+                   Visibility="Collapsed" />
+
+        <!-- Deposit list -->
+        <ListView x:Name="DepositListView"
+                  ItemsSource="{Binding ScheduledDeposits}"
+                  SelectedItem="{Binding SelectedDeposit}"
+                  BorderThickness="1"
+                  Margin="0,4,0,0">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="שם" Width="120"
+                                    DisplayMemberBinding="{Binding Name}" />
+                    <GridViewColumn Header="קרן" Width="100"
+                                    DisplayMemberBinding="{Binding FundName}" />
+                    <GridViewColumn Header="סכום" Width="90">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding FormattedAmount}" FlowDirection="LeftToRight" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="תזמון" Width="160"
+                                    DisplayMemberBinding="{Binding FormattedSchedule}" />
+                    <GridViewColumn Header="הרצה הבאה" Width="120">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding FormattedNextRun}" FlowDirection="LeftToRight" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="מצב" Width="60"
+                                    DisplayMemberBinding="{Binding StatusLabel}" />
+                </GridView>
+            </ListView.View>
+        </ListView>
+
+    </DockPanel>
+
+    <!-- Triggers for empty state visibility -->
+    <Window.Style>
+        <Style TargetType="Window">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsEmpty}" Value="True">
+                    <Setter Property="Tag" Value="empty" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Style>
+</Window>

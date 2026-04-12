@@ -64,6 +64,11 @@
                         IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBooleanConverter}}"
                         Padding="12,4"
                         Margin="8,0,0,0" />
+                <Button Content="הפקדות מתוזמנות"
+                        Command="{Binding ManageScheduledDepositsCommand}"
+                        IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBooleanConverter}}"
+                        Padding="12,4"
+                        Margin="8,0,0,0" />
             </StackPanel>
         </StackPanel>
 
@@ -84,6 +89,26 @@
                            FontSize="15"
                            FontWeight="SemiBold"
                            Margin="0,0,0,6" />
+
+                <!-- Sort controls (E5.10) -->
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
+                    <TextBlock Text="מיון:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <ComboBox ItemsSource="{Binding SortOptions}"
+                              SelectedItem="{Binding SelectedSortOption, Mode=TwoWay}"
+                              DisplayMemberPath="Label"
+                              Width="120"
+                              IsEditable="False" />
+                    <Button Content="↑"
+                            Command="{Binding MoveSelectedFundUpCommand}"
+                            Padding="8,4"
+                            Margin="6,0,0,0"
+                            ToolTip="הזז למעלה" />
+                    <Button Content="↓"
+                            Command="{Binding MoveSelectedFundDownCommand}"
+                            Padding="8,4"
+                            Margin="4,0,0,0"
+                            ToolTip="הזז למטה" />
+                </StackPanel>
 
                 <!-- Fund operations toolbar -->
                 <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">

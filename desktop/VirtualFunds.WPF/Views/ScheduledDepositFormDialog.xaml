@@ -1,0 +1,115 @@
+<Window x:Class="VirtualFunds.WPF.Views.ScheduledDepositFormDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="הפקדה מתוזמנת"
+        Height="560" Width="420"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        FlowDirection="RightToLeft">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" /> <!-- 0: Name label -->
+            <RowDefinition Height="Auto" /> <!-- 1: Name input -->
+            <RowDefinition Height="Auto" /> <!-- 2: Fund label -->
+            <RowDefinition Height="Auto" /> <!-- 3: Fund ComboBox -->
+            <RowDefinition Height="Auto" /> <!-- 4: Amount label -->
+            <RowDefinition Height="Auto" /> <!-- 5: Amount input -->
+            <RowDefinition Height="Auto" /> <!-- 6: Schedule kind label -->
+            <RowDefinition Height="Auto" /> <!-- 7: Schedule kind ComboBox -->
+            <RowDefinition Height="Auto" /> <!-- 8: Time of day label (Daily/Weekly/Monthly) -->
+            <RowDefinition Height="Auto" /> <!-- 9: Time of day input -->
+            <RowDefinition Height="Auto" /> <!-- 10: Weekday label (Weekly) -->
+            <RowDefinition Height="Auto" /> <!-- 11: Weekday checkboxes -->
+            <RowDefinition Height="Auto" /> <!-- 12: Day of month label (Monthly) -->
+            <RowDefinition Height="Auto" /> <!-- 13: Day of month ComboBox -->
+            <RowDefinition Height="Auto" /> <!-- 14: OneTime datetime label -->
+            <RowDefinition Height="Auto" /> <!-- 15: OneTime datetime input -->
+            <RowDefinition Height="Auto" /> <!-- 16: Note label -->
+            <RowDefinition Height="Auto" /> <!-- 17: Note input -->
+            <RowDefinition Height="Auto" /> <!-- 18: Enabled checkbox -->
+            <RowDefinition Height="Auto" /> <!-- 19: Error text -->
+            <RowDefinition Height="*" />    <!-- 20: Spacer -->
+            <RowDefinition Height="Auto" /> <!-- 21: Buttons -->
+        </Grid.RowDefinitions>
+
+        <!-- Name -->
+        <TextBlock Grid.Row="0" Text="שם:" Margin="0,0,0,4" />
+        <TextBox Grid.Row="1" x:Name="NameTextBox" Margin="0,0,0,10" Padding="4" MaxLength="100" />
+
+        <!-- Target fund -->
+        <TextBlock Grid.Row="2" Text="קרן:" Margin="0,0,0,4" />
+        <ComboBox Grid.Row="3" x:Name="FundComboBox" DisplayMemberPath="Name" Margin="0,0,0,10" Padding="4" />
+
+        <!-- Amount -->
+        <TextBlock Grid.Row="4" Text="סכום ₪:" Margin="0,0,0,4" />
+        <TextBox Grid.Row="5" x:Name="AmountTextBox" Margin="0,0,0,10" Padding="4"
+                 FlowDirection="LeftToRight" MaxLength="20" />
+
+        <!-- Schedule kind -->
+        <TextBlock Grid.Row="6" Text="תזמון:" Margin="0,0,0,4" />
+        <ComboBox Grid.Row="7" x:Name="ScheduleKindComboBox" Margin="0,0,0,10" Padding="4"
+                  SelectionChanged="ScheduleKindComboBox_SelectionChanged">
+            <ComboBoxItem Tag="Daily" Content="יומי" />
+            <ComboBoxItem Tag="Weekly" Content="שבועי" />
+            <ComboBoxItem Tag="Monthly" Content="חודשי" />
+            <ComboBoxItem Tag="OneTime" Content="חד פעמי" />
+        </ComboBox>
+
+        <!-- Time of day (Daily/Weekly/Monthly) -->
+        <TextBlock Grid.Row="8" x:Name="TimeOfDayLabel" Text="שעה ביום:" Margin="0,0,0,4"
+                   Visibility="Collapsed" />
+        <TextBox Grid.Row="9" x:Name="TimeOfDayTextBox" Margin="0,0,0,10" Padding="4"
+                 FlowDirection="LeftToRight" MaxLength="5"
+                 Visibility="Collapsed" />
+
+        <!-- Weekday checkboxes (Weekly) -->
+        <TextBlock Grid.Row="10" x:Name="WeekdayLabel" Text="ימים בשבוע:" Margin="0,0,0,4"
+                   Visibility="Collapsed" />
+        <WrapPanel Grid.Row="11" x:Name="WeekdayPanel" Margin="0,0,0,10"
+                   Visibility="Collapsed">
+            <!-- Sunday=bit0 … Saturday=bit6, displayed right-to-left naturally by RTL FlowDirection -->
+            <CheckBox x:Name="DaySunday" Content="א׳" Margin="0,0,10,4" />
+            <CheckBox x:Name="DayMonday" Content="ב׳" Margin="0,0,10,4" />
+            <CheckBox x:Name="DayTuesday" Content="ג׳" Margin="0,0,10,4" />
+            <CheckBox x:Name="DayWednesday" Content="ד׳" Margin="0,0,10,4" />
+            <CheckBox x:Name="DayThursday" Content="ה׳" Margin="0,0,10,4" />
+            <CheckBox x:Name="DayFriday" Content="ו׳" Margin="0,0,10,4" />
+            <CheckBox x:Name="DaySaturday" Content="ש׳" Margin="0,0,10,4" />
+        </WrapPanel>
+
+        <!-- Day of month (Monthly) -->
+        <TextBlock Grid.Row="12" x:Name="DayOfMonthLabel" Text="יום בחודש:" Margin="0,0,0,4"
+                   Visibility="Collapsed" />
+        <ComboBox Grid.Row="13" x:Name="DayOfMonthComboBox" Margin="0,0,0,10" Padding="4"
+                  Visibility="Collapsed" FlowDirection="LeftToRight" />
+
+        <!-- OneTime datetime -->
+        <TextBlock Grid.Row="14" x:Name="OneTimeDateLabel" Text="תאריך ושעה:" Margin="0,0,0,4"
+                   Visibility="Collapsed" />
+        <StackPanel Grid.Row="15" x:Name="OneTimeDatePanel" Orientation="Horizontal" Margin="0,0,0,10"
+                    Visibility="Collapsed">
+            <DatePicker x:Name="OneTimeDatePicker" Margin="0,0,8,0" FlowDirection="LeftToRight" />
+            <TextBox x:Name="OneTimeTimeTextBox" Width="60" Padding="4" MaxLength="5"
+                     FlowDirection="LeftToRight" />
+        </StackPanel>
+
+        <!-- Note -->
+        <TextBlock Grid.Row="16" Text="הערה (אופציונלי):" Margin="0,0,0,4" />
+        <TextBox Grid.Row="17" x:Name="NoteTextBox" Margin="0,0,0,10" Padding="4" MaxLength="200" />
+
+        <!-- Enabled checkbox -->
+        <CheckBox Grid.Row="18" x:Name="EnabledCheckBox" Content="מופעל" Margin="0,0,0,8"
+                  IsChecked="True" />
+
+        <!-- Validation error -->
+        <TextBlock Grid.Row="19" x:Name="ErrorText" Foreground="Red" TextWrapping="Wrap"
+                   FontSize="11" />
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="21" Orientation="Horizontal" HorizontalAlignment="Left">
+            <Button Content="אישור" MinWidth="70" Padding="12,4" Margin="0,0,8,0"
+                    IsDefault="True" Click="OkButton_Click" />
+            <Button Content="ביטול" MinWidth="70" Padding="12,4" IsCancel="True" />
+        </StackPanel>
+    </Grid>
+</Window>
