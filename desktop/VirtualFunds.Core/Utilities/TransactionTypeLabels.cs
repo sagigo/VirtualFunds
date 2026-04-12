@@ -1,7 +1,9 @@
+using VirtualFunds.Core.Models;
+
 namespace VirtualFunds.Core.Utilities;
 
 /// <summary>
-/// Maps canonical <c>transaction_type</c> values (E5.2) to Hebrew display labels for the UI.
+/// Maps <see cref="TransactionType"/> enum values (E5.2) to Hebrew display labels for the UI.
 /// Also provides the list of filterable summary types for the history filter (E7.6).
 /// </summary>
 public static class TransactionTypeLabels
@@ -10,43 +12,43 @@ public static class TransactionTypeLabels
     /// All transaction types and their Hebrew labels.
     /// Covers both summary and detail types from E5.2.
     /// </summary>
-    private static readonly Dictionary<string, string> Labels = new()
+    private static readonly Dictionary<TransactionType, string> Labels = new()
     {
         // Portfolio structural
-        ["PortfolioCreated"] = "יצירת תיק",
-        ["PortfolioRenamed"] = "שינוי שם תיק",
-        ["PortfolioClosed"] = "סגירת תיק",
+        [TransactionType.PortfolioCreated] = "יצירת תיק",
+        [TransactionType.PortfolioRenamed] = "שינוי שם תיק",
+        [TransactionType.PortfolioClosed] = "סגירת תיק",
 
         // Fund structural
-        ["FundCreated"] = "יצירת קרן",
-        ["FundRenamed"] = "שינוי שם קרן",
-        ["FundDeleted"] = "מחיקת קרן",
+        [TransactionType.FundCreated] = "יצירת קרן",
+        [TransactionType.FundRenamed] = "שינוי שם קרן",
+        [TransactionType.FundDeleted] = "מחיקת קרן",
 
         // Fund money operations
-        ["FundDeposit"] = "הפקדה",
-        ["FundWithdrawal"] = "משיכה",
-        ["Transfer"] = "העברה",
-        ["TransferCredit"] = "העברה — זיכוי",
-        ["TransferDebit"] = "העברה — חיוב",
+        [TransactionType.FundDeposit] = "הפקדה",
+        [TransactionType.FundWithdrawal] = "משיכה",
+        [TransactionType.Transfer] = "העברה",
+        [TransactionType.TransferCredit] = "העברה — זיכוי",
+        [TransactionType.TransferDebit] = "העברה — חיוב",
 
         // Revaluation
-        ["PortfolioRevalued"] = "עדכון שווי",
-        ["RevaluationCredit"] = "עדכון שווי — זיכוי",
-        ["RevaluationDebit"] = "עדכון שווי — חיוב",
+        [TransactionType.PortfolioRevalued] = "עדכון שווי",
+        [TransactionType.RevaluationCredit] = "עדכון שווי — זיכוי",
+        [TransactionType.RevaluationDebit] = "עדכון שווי — חיוב",
 
         // Scheduled
-        ["ScheduledDepositExecuted"] = "הפקדה מתוזמנת",
+        [TransactionType.ScheduledDepositExecuted] = "הפקדה מתוזמנת",
 
         // Undo
-        ["Undo"] = "ביטול",
+        [TransactionType.Undo] = "ביטול",
     };
 
     /// <summary>
     /// Gets the Hebrew label for a transaction type.
-    /// Returns the raw type string if no label is defined.
+    /// Returns the enum name as a fallback if no label is defined.
     /// </summary>
-    public static string GetLabel(string transactionType) =>
-        Labels.TryGetValue(transactionType, out var label) ? label : transactionType;
+    public static string GetLabel(TransactionType transactionType) =>
+        Labels.TryGetValue(transactionType, out var label) ? label : transactionType.ToString();
 
     /// <summary>
     /// Returns the summary-level transaction types that can be used as filter options (E7.6).
@@ -57,18 +59,18 @@ public static class TransactionTypeLabels
     {
         return
         [
-            new("FundDeposit", Labels["FundDeposit"]),
-            new("FundWithdrawal", Labels["FundWithdrawal"]),
-            new("Transfer", Labels["Transfer"]),
-            new("PortfolioRevalued", Labels["PortfolioRevalued"]),
-            new("FundCreated", Labels["FundCreated"]),
-            new("FundRenamed", Labels["FundRenamed"]),
-            new("FundDeleted", Labels["FundDeleted"]),
-            new("PortfolioCreated", Labels["PortfolioCreated"]),
-            new("PortfolioRenamed", Labels["PortfolioRenamed"]),
-            new("PortfolioClosed", Labels["PortfolioClosed"]),
-            new("ScheduledDepositExecuted", Labels["ScheduledDepositExecuted"]),
-            new("Undo", Labels["Undo"]),
+            new(TransactionType.FundDeposit,              Labels[TransactionType.FundDeposit]),
+            new(TransactionType.FundWithdrawal,           Labels[TransactionType.FundWithdrawal]),
+            new(TransactionType.Transfer,                 Labels[TransactionType.Transfer]),
+            new(TransactionType.PortfolioRevalued,        Labels[TransactionType.PortfolioRevalued]),
+            new(TransactionType.FundCreated,              Labels[TransactionType.FundCreated]),
+            new(TransactionType.FundRenamed,              Labels[TransactionType.FundRenamed]),
+            new(TransactionType.FundDeleted,              Labels[TransactionType.FundDeleted]),
+            new(TransactionType.PortfolioCreated,         Labels[TransactionType.PortfolioCreated]),
+            new(TransactionType.PortfolioRenamed,         Labels[TransactionType.PortfolioRenamed]),
+            new(TransactionType.PortfolioClosed,          Labels[TransactionType.PortfolioClosed]),
+            new(TransactionType.ScheduledDepositExecuted, Labels[TransactionType.ScheduledDepositExecuted]),
+            new(TransactionType.Undo,                     Labels[TransactionType.Undo]),
         ];
     }
 }
@@ -76,6 +78,6 @@ public static class TransactionTypeLabels
 /// <summary>
 /// A filterable transaction type for the history type dropdown.
 /// </summary>
-/// <param name="TypeValue">The canonical transaction_type string (e.g. "FundDeposit").</param>
+/// <param name="TypeValue">The transaction type enum value (e.g. <see cref="TransactionType.FundDeposit"/>).</param>
 /// <param name="DisplayLabel">The Hebrew label shown in the UI (e.g. "הפקדה").</param>
-public record TransactionTypeFilter(string TypeValue, string DisplayLabel);
+public record TransactionTypeFilter(TransactionType TypeValue, string DisplayLabel);

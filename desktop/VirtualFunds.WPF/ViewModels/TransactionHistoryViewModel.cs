@@ -27,10 +27,13 @@ public sealed partial class TransactionHistoryViewModel : ObservableObject
     /// Transaction types that can be undone (E6.12). Structural operations,
     /// scheduled deposits, and undo operations themselves are not undoable.
     /// </summary>
-    private static readonly HashSet<string> UndoableTypes = new()
-    {
-        "FundDeposit", "FundWithdrawal", "Transfer", "PortfolioRevalued"
-    };
+    private static readonly HashSet<TransactionType> UndoableTypes =
+    [
+        TransactionType.FundDeposit,
+        TransactionType.FundWithdrawal,
+        TransactionType.Transfer,
+        TransactionType.PortfolioRevalued,
+    ];
 
     /// <summary>All loaded transaction groups (unfiltered). Used as the source for client-side filtering.</summary>
     private IReadOnlyList<TransactionGroup> _allGroups = Array.Empty<TransactionGroup>();

@@ -159,11 +159,11 @@ public sealed class SupabaseTransactionService : ITransactionService
         var rows = group.ToList();
 
         // Find the summary row (there should be exactly one per E7.2).
-        var summary = rows.FirstOrDefault(r => r.RecordKind == "Summary");
+        var summary = rows.FirstOrDefault(r => r.RecordKind == RecordKind.Summary);
 
         // Detail rows: everything that isn't the summary.
         var details = rows
-            .Where(r => r.RecordKind == "Detail")
+            .Where(r => r.RecordKind == RecordKind.Detail)
             .Select(r => new TransactionDetailItem
             {
                 FundId = r.FundId!.Value,

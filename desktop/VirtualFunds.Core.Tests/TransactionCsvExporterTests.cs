@@ -13,7 +13,7 @@ public class TransactionCsvExporterTests
     // -----------------------------------------------------------------------------------------
 
     private static TransactionGroup MakeGroup(
-        string type = "FundDeposit",
+        TransactionType type = TransactionType.FundDeposit,
         string? summaryText = "הפקדה לקרן א",
         long amountAgoras = 10000,
         DateTime? committedAt = null,
@@ -29,7 +29,7 @@ public class TransactionCsvExporterTests
 
     private static TransactionDetailItem MakeDetail(
         string fundName = "קרן א",
-        string type = "FundDeposit",
+        TransactionType type = TransactionType.FundDeposit,
         long amountAgoras = 10000,
         long? beforeBalance = 0,
         long? afterBalance = 10000) => new()

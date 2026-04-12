@@ -16,10 +16,9 @@ public class TransactionGroup
     public DateTime CommittedAtUtc { get; init; }
 
     /// <summary>
-    /// The transaction type from the summary row (e.g. "FundDeposit", "Transfer").
-    /// Used for type filtering (E7.6).
+    /// The transaction type from the summary row. Used for type filtering (E7.6).
     /// </summary>
-    public string TransactionType { get; init; } = string.Empty;
+    public TransactionType TransactionType { get; init; }
 
     /// <summary>Hebrew display label for the transaction type.</summary>
     public string TransactionTypeLabel => TransactionTypeLabels.GetLabel(TransactionType);
@@ -72,8 +71,8 @@ public class TransactionDetailItem
     /// </summary>
     public string FundName { get; init; } = string.Empty;
 
-    /// <summary>The detail-level transaction type (e.g. "TransferCredit", "RevaluationDebit").</summary>
-    public string TransactionType { get; init; } = string.Empty;
+    /// <summary>The detail-level transaction type (e.g. TransferCredit, RevaluationDebit).</summary>
+    public TransactionType TransactionType { get; init; }
 
     /// <summary>Hebrew display label for the detail transaction type.</summary>
     public string TransactionTypeLabel => TransactionTypeLabels.GetLabel(TransactionType);

@@ -75,15 +75,8 @@ public class TransactionModelTests
     [Fact]
     public void DetailItem_TransactionTypeLabel_KnownType_ReturnsHebrew()
     {
-        var item = new TransactionDetailItem { TransactionType = "TransferCredit" };
+        var item = new TransactionDetailItem { TransactionType = TransactionType.TransferCredit };
         Assert.Equal("העברה — זיכוי", item.TransactionTypeLabel);
-    }
-
-    [Fact]
-    public void DetailItem_TransactionTypeLabel_UnknownType_ReturnsRawType()
-    {
-        var item = new TransactionDetailItem { TransactionType = "UnknownDetailType" };
-        Assert.Equal("UnknownDetailType", item.TransactionTypeLabel);
     }
 
     // -----------------------------------------------------------------------------------------
@@ -143,14 +136,7 @@ public class TransactionModelTests
     [Fact]
     public void Group_TransactionTypeLabel_KnownType_ReturnsHebrew()
     {
-        var group = new TransactionGroup { TransactionType = "FundDeposit" };
+        var group = new TransactionGroup { TransactionType = TransactionType.FundDeposit };
         Assert.Equal("הפקדה", group.TransactionTypeLabel);
-    }
-
-    [Fact]
-    public void Group_TransactionTypeLabel_UnknownType_ReturnsRawType()
-    {
-        var group = new TransactionGroup { TransactionType = "FutureType" };
-        Assert.Equal("FutureType", group.TransactionTypeLabel);
     }
 }

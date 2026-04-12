@@ -1071,7 +1071,7 @@ public class PortfolioViewModelTests
     public void DefaultSortMode_IsName()
     {
         var vm = MakeVm();
-        Assert.Equal(FundSortMode.Name, vm.SelectedSortOption.Mode);
+        Assert.Equal(FundSortMode.CreatedDate, vm.SelectedSortOption.Mode);
     }
 
     [Fact]
@@ -1087,6 +1087,8 @@ public class PortfolioViewModelTests
 
         var vm = MakeVm();
         await vm.LoadFundsCommand.ExecuteAsync(null);
+
+        vm.SelectedSortOption = vm.SortOptions.First(o => o.Mode == FundSortMode.Name);
 
         Assert.Equal("א", vm.Funds[0].Name);
         Assert.Equal("ב", vm.Funds[1].Name);

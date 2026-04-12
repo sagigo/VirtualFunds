@@ -35,7 +35,7 @@ public class TransactionHistoryViewModelTests
 
     /// <summary>Creates a <see cref="TransactionGroup"/> for testing.</summary>
     private static TransactionGroup MakeGroup(
-        string type = "FundDeposit",
+        TransactionType type = TransactionType.FundDeposit,
         Guid? operationId = null,
         Guid? undoOfOperationId = null,
         bool isUndoable = false) => new()
@@ -164,10 +164,10 @@ public class TransactionHistoryViewModelTests
     [Fact]
     public async Task LoadHistory_UndoableTypes_MarkedTrue()
     {
-        var deposit = MakeGroup("FundDeposit");
-        var withdrawal = MakeGroup("FundWithdrawal");
-        var transfer = MakeGroup("Transfer");
-        var revalue = MakeGroup("PortfolioRevalued");
+        var deposit = MakeGroup(TransactionType.FundDeposit);
+        var withdrawal = MakeGroup(TransactionType.FundWithdrawal);
+        var transfer = MakeGroup(TransactionType.Transfer);
+        var revalue = MakeGroup(TransactionType.PortfolioRevalued);
 
         _transactionService.GetHistoryAsync(PortfolioId)
             .Returns(new List<TransactionGroup> { deposit, withdrawal, transfer, revalue });
@@ -187,8 +187,8 @@ public class TransactionHistoryViewModelTests
     public async Task LoadHistory_AlreadyUndone_MarkedFalse()
     {
         var originalOp = Guid.NewGuid();
-        var deposit = MakeGroup("FundDeposit", operationId: originalOp);
-        var undo = MakeGroup("Undo", undoOfOperationId: originalOp);
+        var deposit = MakeGroup(TransactionType.FundDeposit, operationId: originalOp);
+        var undo = MakeGroup(TransactionType.Undo, undoOfOperationId: originalOp);
 
         _transactionService.GetHistoryAsync(PortfolioId)
             .Returns(new List<TransactionGroup> { undo, deposit });
@@ -201,16 +201,18 @@ public class TransactionHistoryViewModelTests
         Assert.False(deposit.IsUndoable);
     }
 
-    [Theory]
-    [InlineData("FundCreated")]
-    [InlineData("FundRenamed")]
-    [InlineData("FundDeleted")]
-    [InlineData("PortfolioCreated")]
-    [InlineData("PortfolioRenamed")]
-    [InlineData("PortfolioClosed")]
-    public async Task LoadHistory_StructuralOps_MarkedFalse(string transactionType)
+    // xUnit [InlineData] doesn't support enum literals in attributes, so each structural type gets its own fact.
+
+    [Fact] public async Task LoadHistory_FundCreated_MarkedFalse() => await AssertStructuralNotUndoable(TransactionType.FundCreated);
+    [Fact] public async Task LoadHistory_FundRenamed_MarkedFalse() => await AssertStructuralNotUndoable(TransactionType.FundRenamed);
+    [Fact] public async Task LoadHistory_FundDeleted_MarkedFalse() => await AssertStructuralNotUndoable(TransactionType.FundDeleted);
+    [Fact] public async Task LoadHistory_PortfolioCreated_MarkedFalse() => await AssertStructuralNotUndoable(TransactionType.PortfolioCreated);
+    [Fact] public async Task LoadHistory_PortfolioRenamed_MarkedFalse() => await AssertStructuralNotUndoable(TransactionType.PortfolioRenamed);
+    [Fact] public async Task LoadHistory_PortfolioClosed_MarkedFalse() => await AssertStructuralNotUndoable(TransactionType.PortfolioClosed);
+
+    private async Task AssertStructuralNotUndoable(TransactionType type)
     {
-        var group = MakeGroup(transactionType);
+        var group = MakeGroup(type);
 
         _transactionService.GetHistoryAsync(PortfolioId)
             .Returns(new List<TransactionGroup> { group });
@@ -226,7 +228,7 @@ public class TransactionHistoryViewModelTests
     [Fact]
     public async Task LoadHistory_UndoType_MarkedFalse()
     {
-        var group = MakeGroup("Undo");
+        var group = MakeGroup(TransactionType.Undo);
 
         _transactionService.GetHistoryAsync(PortfolioId)
             .Returns(new List<TransactionGroup> { group });
@@ -242,7 +244,7 @@ public class TransactionHistoryViewModelTests
     [Fact]
     public async Task LoadHistory_ScheduledDeposit_MarkedFalse()
     {
-        var group = MakeGroup("ScheduledDepositExecuted");
+        var group = MakeGroup(TransactionType.ScheduledDepositExecuted);
 
         _transactionService.GetHistoryAsync(PortfolioId)
             .Returns(new List<TransactionGroup> { group });

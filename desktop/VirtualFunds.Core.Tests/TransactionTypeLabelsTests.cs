@@ -1,3 +1,4 @@
+using VirtualFunds.Core.Models;
 using VirtualFunds.Core.Utilities;
 
 namespace VirtualFunds.Core.Tests;
@@ -8,43 +9,27 @@ namespace VirtualFunds.Core.Tests;
 public class TransactionTypeLabelsTests
 {
     // -----------------------------------------------------------------------------------------
-    // GetLabel — known types
+    // GetLabel — all known types
     // -----------------------------------------------------------------------------------------
 
-    [Theory]
-    [InlineData("FundDeposit", "הפקדה")]
-    [InlineData("FundWithdrawal", "משיכה")]
-    [InlineData("Transfer", "העברה")]
-    [InlineData("TransferCredit", "העברה — זיכוי")]
-    [InlineData("TransferDebit", "העברה — חיוב")]
-    [InlineData("PortfolioRevalued", "עדכון שווי")]
-    [InlineData("RevaluationCredit", "עדכון שווי — זיכוי")]
-    [InlineData("RevaluationDebit", "עדכון שווי — חיוב")]
-    [InlineData("FundCreated", "יצירת קרן")]
-    [InlineData("FundRenamed", "שינוי שם קרן")]
-    [InlineData("FundDeleted", "מחיקת קרן")]
-    [InlineData("PortfolioCreated", "יצירת תיק")]
-    [InlineData("PortfolioRenamed", "שינוי שם תיק")]
-    [InlineData("PortfolioClosed", "סגירת תיק")]
-    [InlineData("ScheduledDepositExecuted", "הפקדה מתוזמנת")]
-    [InlineData("Undo", "ביטול")]
-    public void GetLabel_KnownType_ReturnsHebrew(string type, string expectedHebrew)
-    {
-        Assert.Equal(expectedHebrew, TransactionTypeLabels.GetLabel(type));
-    }
+    // xUnit [InlineData] doesn't support enum literals in attributes, so each type gets its own fact.
 
-    [Fact]
-    public void GetLabel_UnknownType_ReturnsRawType()
-    {
-        const string unknown = "SomeFutureType";
-        Assert.Equal(unknown, TransactionTypeLabels.GetLabel(unknown));
-    }
-
-    [Fact]
-    public void GetLabel_EmptyString_ReturnsEmptyString()
-    {
-        Assert.Equal(string.Empty, TransactionTypeLabels.GetLabel(string.Empty));
-    }
+    [Fact] public void GetLabel_FundDeposit_ReturnsHebrew() => Assert.Equal("הפקדה", TransactionTypeLabels.GetLabel(TransactionType.FundDeposit));
+    [Fact] public void GetLabel_FundWithdrawal_ReturnsHebrew() => Assert.Equal("משיכה", TransactionTypeLabels.GetLabel(TransactionType.FundWithdrawal));
+    [Fact] public void GetLabel_Transfer_ReturnsHebrew() => Assert.Equal("העברה", TransactionTypeLabels.GetLabel(TransactionType.Transfer));
+    [Fact] public void GetLabel_TransferCredit_ReturnsHebrew() => Assert.Equal("העברה — זיכוי", TransactionTypeLabels.GetLabel(TransactionType.TransferCredit));
+    [Fact] public void GetLabel_TransferDebit_ReturnsHebrew() => Assert.Equal("העברה — חיוב", TransactionTypeLabels.GetLabel(TransactionType.TransferDebit));
+    [Fact] public void GetLabel_PortfolioRevalued_ReturnsHebrew() => Assert.Equal("עדכון שווי", TransactionTypeLabels.GetLabel(TransactionType.PortfolioRevalued));
+    [Fact] public void GetLabel_RevaluationCredit_ReturnsHebrew() => Assert.Equal("עדכון שווי — זיכוי", TransactionTypeLabels.GetLabel(TransactionType.RevaluationCredit));
+    [Fact] public void GetLabel_RevaluationDebit_ReturnsHebrew() => Assert.Equal("עדכון שווי — חיוב", TransactionTypeLabels.GetLabel(TransactionType.RevaluationDebit));
+    [Fact] public void GetLabel_FundCreated_ReturnsHebrew() => Assert.Equal("יצירת קרן", TransactionTypeLabels.GetLabel(TransactionType.FundCreated));
+    [Fact] public void GetLabel_FundRenamed_ReturnsHebrew() => Assert.Equal("שינוי שם קרן", TransactionTypeLabels.GetLabel(TransactionType.FundRenamed));
+    [Fact] public void GetLabel_FundDeleted_ReturnsHebrew() => Assert.Equal("מחיקת קרן", TransactionTypeLabels.GetLabel(TransactionType.FundDeleted));
+    [Fact] public void GetLabel_PortfolioCreated_ReturnsHebrew() => Assert.Equal("יצירת תיק", TransactionTypeLabels.GetLabel(TransactionType.PortfolioCreated));
+    [Fact] public void GetLabel_PortfolioRenamed_ReturnsHebrew() => Assert.Equal("שינוי שם תיק", TransactionTypeLabels.GetLabel(TransactionType.PortfolioRenamed));
+    [Fact] public void GetLabel_PortfolioClosed_ReturnsHebrew() => Assert.Equal("סגירת תיק", TransactionTypeLabels.GetLabel(TransactionType.PortfolioClosed));
+    [Fact] public void GetLabel_ScheduledDepositExecuted_ReturnsHebrew() => Assert.Equal("הפקדה מתוזמנת", TransactionTypeLabels.GetLabel(TransactionType.ScheduledDepositExecuted));
+    [Fact] public void GetLabel_Undo_ReturnsHebrew() => Assert.Equal("ביטול", TransactionTypeLabels.GetLabel(TransactionType.Undo));
 
     // -----------------------------------------------------------------------------------------
     // GetFilterOptions — filter list shape (E7.6)
@@ -64,47 +49,28 @@ public class TransactionTypeLabelsTests
         Assert.All(options, o => Assert.NotEmpty(o.DisplayLabel));
     }
 
-    [Fact]
-    public void GetFilterOptions_AllTypeValuesAreNonEmpty()
-    {
-        var options = TransactionTypeLabels.GetFilterOptions();
-        Assert.All(options, o => Assert.NotEmpty(o.TypeValue));
-    }
-
     /// <summary>
     /// Detail-only types (TransferCredit, TransferDebit, RevaluationCredit, RevaluationDebit)
     /// must not appear in the filter options per E7.6.
     /// </summary>
-    [Theory]
-    [InlineData("TransferCredit")]
-    [InlineData("TransferDebit")]
-    [InlineData("RevaluationCredit")]
-    [InlineData("RevaluationDebit")]
-    public void GetFilterOptions_DoesNotContainDetailOnlyTypes(string detailOnlyType)
-    {
-        var options = TransactionTypeLabels.GetFilterOptions();
-        Assert.DoesNotContain(options, o => o.TypeValue == detailOnlyType);
-    }
+    [Fact] public void GetFilterOptions_DoesNotContain_TransferCredit() => Assert.DoesNotContain(TransactionTypeLabels.GetFilterOptions(), o => o.TypeValue == TransactionType.TransferCredit);
+    [Fact] public void GetFilterOptions_DoesNotContain_TransferDebit() => Assert.DoesNotContain(TransactionTypeLabels.GetFilterOptions(), o => o.TypeValue == TransactionType.TransferDebit);
+    [Fact] public void GetFilterOptions_DoesNotContain_RevaluationCredit() => Assert.DoesNotContain(TransactionTypeLabels.GetFilterOptions(), o => o.TypeValue == TransactionType.RevaluationCredit);
+    [Fact] public void GetFilterOptions_DoesNotContain_RevaluationDebit() => Assert.DoesNotContain(TransactionTypeLabels.GetFilterOptions(), o => o.TypeValue == TransactionType.RevaluationDebit);
 
-    /// <summary>Each summary-level type that appears in filter options should have a non-null label.</summary>
-    [Theory]
-    [InlineData("FundDeposit")]
-    [InlineData("FundWithdrawal")]
-    [InlineData("Transfer")]
-    [InlineData("PortfolioRevalued")]
-    [InlineData("FundCreated")]
-    [InlineData("FundRenamed")]
-    [InlineData("FundDeleted")]
-    [InlineData("PortfolioCreated")]
-    [InlineData("PortfolioRenamed")]
-    [InlineData("PortfolioClosed")]
-    [InlineData("ScheduledDepositExecuted")]
-    [InlineData("Undo")]
-    public void GetFilterOptions_ContainsSummaryType(string summaryType)
-    {
-        var options = TransactionTypeLabels.GetFilterOptions();
-        Assert.Contains(options, o => o.TypeValue == summaryType);
-    }
+    /// <summary>Each summary-level type that appears in filter options should be present.</summary>
+    [Fact] public void GetFilterOptions_Contains_FundDeposit() => Assert.Contains(TransactionTypeLabels.GetFilterOptions(), o => o.TypeValue == TransactionType.FundDeposit);
+    [Fact] public void GetFilterOptions_Contains_FundWithdrawal() => Assert.Contains(TransactionTypeLabels.GetFilterOptions(), o => o.TypeValue == TransactionType.FundWithdrawal);
+    [Fact] public void GetFilterOptions_Contains_Transfer() => Assert.Contains(TransactionTypeLabels.GetFilterOptions(), o => o.TypeValue == TransactionType.Transfer);
+    [Fact] public void GetFilterOptions_Contains_PortfolioRevalued() => Assert.Contains(TransactionTypeLabels.GetFilterOptions(), o => o.TypeValue == TransactionType.PortfolioRevalued);
+    [Fact] public void GetFilterOptions_Contains_FundCreated() => Assert.Contains(TransactionTypeLabels.GetFilterOptions(), o => o.TypeValue == TransactionType.FundCreated);
+    [Fact] public void GetFilterOptions_Contains_FundRenamed() => Assert.Contains(TransactionTypeLabels.GetFilterOptions(), o => o.TypeValue == TransactionType.FundRenamed);
+    [Fact] public void GetFilterOptions_Contains_FundDeleted() => Assert.Contains(TransactionTypeLabels.GetFilterOptions(), o => o.TypeValue == TransactionType.FundDeleted);
+    [Fact] public void GetFilterOptions_Contains_PortfolioCreated() => Assert.Contains(TransactionTypeLabels.GetFilterOptions(), o => o.TypeValue == TransactionType.PortfolioCreated);
+    [Fact] public void GetFilterOptions_Contains_PortfolioRenamed() => Assert.Contains(TransactionTypeLabels.GetFilterOptions(), o => o.TypeValue == TransactionType.PortfolioRenamed);
+    [Fact] public void GetFilterOptions_Contains_PortfolioClosed() => Assert.Contains(TransactionTypeLabels.GetFilterOptions(), o => o.TypeValue == TransactionType.PortfolioClosed);
+    [Fact] public void GetFilterOptions_Contains_ScheduledDepositExecuted() => Assert.Contains(TransactionTypeLabels.GetFilterOptions(), o => o.TypeValue == TransactionType.ScheduledDepositExecuted);
+    [Fact] public void GetFilterOptions_Contains_Undo() => Assert.Contains(TransactionTypeLabels.GetFilterOptions(), o => o.TypeValue == TransactionType.Undo);
 
     [Fact]
     public void GetFilterOptions_TypeValuesAreUnique()

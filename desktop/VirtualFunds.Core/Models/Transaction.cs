@@ -1,3 +1,5 @@
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 using Postgrest.Attributes;
 using Postgrest.Models;
 
@@ -34,18 +36,21 @@ public class Transaction : BaseModel
     public DateTime CommittedAtUtc { get; set; }
 
     /// <summary>
-    /// Either "Summary" (one per operation) or "Detail" (per-fund effect).
+    /// Either <see cref="Models.RecordKind.Summary"/> (one per operation) or
+    /// <see cref="Models.RecordKind.Detail"/> (per-fund effect).
     /// See E7.2 for the summary/detail model.
     /// </summary>
+    [JsonConverter(typeof(StringEnumConverter))]
     [Column("record_kind")]
-    public string RecordKind { get; set; } = string.Empty;
+    public RecordKind RecordKind { get; set; }
 
     /// <summary>
-    /// The type of transaction (e.g. "FundDeposit", "Transfer", "PortfolioCreated").
-    /// See E5.2 for the canonical registry.
+    /// The type of transaction. See E5.2 for the canonical registry
+    /// and <see cref="Models.TransactionType"/> for all valid values.
     /// </summary>
+    [JsonConverter(typeof(StringEnumConverter))]
     [Column("transaction_type")]
-    public string TransactionType { get; set; } = string.Empty;
+    public TransactionType TransactionType { get; set; }
 
     /// <summary>
     /// The fund affected by this row. Null for summary rows, non-null for detail rows (E7.2).
