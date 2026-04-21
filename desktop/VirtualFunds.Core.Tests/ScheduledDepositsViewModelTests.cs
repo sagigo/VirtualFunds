@@ -28,7 +28,7 @@ public class ScheduledDepositsViewModelTests
     private static ScheduledDepositListItem MakeDeposit(
         string name = "הפקדה א",
         bool isEnabled = true,
-        string scheduleKind = "Daily") => new()
+        ScheduleKind scheduleKind = ScheduleKind.Daily) => new()
     {
         ScheduledDepositId = Guid.NewGuid(),
         PortfolioId = PortfolioId,
@@ -37,7 +37,7 @@ public class ScheduledDepositsViewModelTests
         IsEnabled = isEnabled,
         AmountAgoras = 10000,
         ScheduleKind = scheduleKind,
-        TimeOfDayMinutes = scheduleKind == "OneTime" ? null : 540,
+        TimeOfDayMinutes = scheduleKind == ScheduleKind.OneTime ? null : 540,
         NextRunAtUtc = DateTime.UtcNow.AddHours(1),
         FundName = "קרן א",
     };
@@ -123,7 +123,7 @@ public class ScheduledDepositsViewModelTests
 
         await _sdService.DidNotReceive().UpsertScheduledDepositAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<long>(),
-            Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<string?>(),
+            Arg.Any<ScheduleKind>(), Arg.Any<bool>(), Arg.Any<string?>(),
             Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(),
             Arg.Any<DateTime?>(), Arg.Any<Guid?>());
     }
@@ -137,7 +137,7 @@ public class ScheduledDepositsViewModelTests
             .Returns(Array.Empty<ScheduledDepositListItem>());
         _sdService.UpsertScheduledDepositAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<long>(),
-            Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<string?>(),
+            Arg.Any<ScheduleKind>(), Arg.Any<bool>(), Arg.Any<string?>(),
             Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(),
             Arg.Any<DateTime?>(), Arg.Any<Guid?>())
             .Returns(Guid.NewGuid());
@@ -146,7 +146,7 @@ public class ScheduledDepositsViewModelTests
             Name: "הפקדה חדשה",
             FundId: fund.FundId,
             AmountAgoras: 5000,
-            ScheduleKind: "Daily",
+            ScheduleKind: ScheduleKind.Daily,
             IsEnabled: true,
             Note: null,
             TimeOfDayMinutes: 540,
@@ -161,7 +161,7 @@ public class ScheduledDepositsViewModelTests
 
         await _sdService.Received(1).UpsertScheduledDepositAsync(
             PortfolioId, fund.FundId, "הפקדה חדשה", 5000,
-            "Daily", true, null, 540, null, null, null, null);
+            ScheduleKind.Daily, true, null, 540, null, null, null, null);
         Assert.Empty(vm.ErrorMessage);
     }
 
@@ -172,13 +172,13 @@ public class ScheduledDepositsViewModelTests
         _fundService.GetFundsAsync(PortfolioId).Returns(new List<FundListItem> { fund });
         _sdService.UpsertScheduledDepositAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<long>(),
-            Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<string?>(),
+            Arg.Any<ScheduleKind>(), Arg.Any<bool>(), Arg.Any<string?>(),
             Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(),
             Arg.Any<DateTime?>(), Arg.Any<Guid?>())
             .ThrowsAsync(new InvalidScheduleFieldsException());
 
         var formResult = new ScheduledDepositFormResult(
-            "test", fund.FundId, 5000, "Daily", true, null, 540, null, null, null);
+            "test", fund.FundId, 5000, ScheduleKind.Daily, true, null, 540, null, null, null);
 
         var vm = MakeVm();
         StubForm(vm, formResult);
@@ -233,7 +233,7 @@ public class ScheduledDepositsViewModelTests
             .Returns(Array.Empty<ScheduledDepositListItem>());
         _sdService.UpsertScheduledDepositAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<long>(),
-            Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<string?>(),
+            Arg.Any<ScheduleKind>(), Arg.Any<bool>(), Arg.Any<string?>(),
             Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(),
             Arg.Any<DateTime?>(), Arg.Any<Guid?>())
             .Returns(deposit.ScheduledDepositId);
@@ -257,7 +257,7 @@ public class ScheduledDepositsViewModelTests
             .Returns(Array.Empty<ScheduledDepositListItem>());
         _sdService.UpsertScheduledDepositAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<long>(),
-            Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<string?>(),
+            Arg.Any<ScheduleKind>(), Arg.Any<bool>(), Arg.Any<string?>(),
             Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(),
             Arg.Any<DateTime?>(), Arg.Any<Guid?>())
             .Returns(deposit.ScheduledDepositId);

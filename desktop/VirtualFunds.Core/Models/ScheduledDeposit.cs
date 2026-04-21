@@ -1,3 +1,5 @@
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 using Postgrest.Attributes;
 using Postgrest.Models;
 
@@ -41,9 +43,10 @@ public class ScheduledDeposit : BaseModel
     [Column("amount_agoras")]
     public long AmountAgoras { get; set; }
 
-    /// <summary>Schedule kind: "OneTime", "Daily", "Weekly", or "Monthly".</summary>
+    /// <summary>The schedule kind (E8.2): OneTime, Daily, Weekly, or Monthly.</summary>
+    [JsonConverter(typeof(StringEnumConverter))]
     [Column("schedule_kind")]
-    public string ScheduleKind { get; set; } = string.Empty;
+    public ScheduleKind ScheduleKind { get; set; }
 
     /// <summary>
     /// Minutes since midnight in Israel time for the scheduled execution time (0–1439).

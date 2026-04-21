@@ -54,7 +54,7 @@ public enum TransactionType
     RevaluationDebit,
 
     // ── Automation ───────────────────────────────────────────────────────────
-    /// <summary>Scheduled deposit auto-execution (Summary + Detail).</summary>
+    /// <summary>Scheduled deposit auto-execution (Summary only). Detail rows use <see cref="FundDeposit"/>.</summary>
     ScheduledDepositExecuted,
 
     // ── Undo ─────────────────────────────────────────────────────────────────

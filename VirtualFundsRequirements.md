@@ -290,7 +290,7 @@ Each execution creates normal transaction history records.
 **Engineering reference:** E9
 
 Users can export:
-- Full transaction history as CSV
+- Transaction history as CSV (currently filtered view)
 - Current portfolio snapshot as CSV
 
 The portfolio snapshot export includes at least:
@@ -1018,13 +1018,16 @@ For UI and export only:
 
 ### E5.10 Sorting requirements
 Default fund ordering:
-- by `normalized_name` ascending
+- by creation date, oldest first (UI default)
+
+The server always returns funds ordered by `normalized_name` ascending. The UI may apply a different default presentation order on top of the server data.
 
 Optional UI sort modes:
 - name
 - balance
 - allocation percent
-- created date
+- created date (default)
+- custom (user-defined, maintained in memory via up/down controls; resets on app restart)
 
 These sort modes are for presentation only. No money algorithm may depend on UI sort.
 
@@ -1248,6 +1251,7 @@ High-level algorithm:
 8. fix remainder deterministically:
    - if `remainder > 0`, add `+1` to the first `remainder` funds in order
    - if `remainder < 0`, subtract `1` from the first `abs(remainder)` funds in order whose provisional new balance is greater than zero
+8b. validate that no fund with a positive `old_balance_i` has been rounded to `new_balance_i = 0`. If any such fund exists, reject the operation before committing. A fund zeroed by revaluation can never recover proportionally (0 × ratio = 0), which would permanently destroy its ownership share.
 9. after the fix, define final `new_balance_i`
 10. compute per-fund deltas:
    - `delta_i = new_balance_i - old_balance_i`
@@ -1295,7 +1299,7 @@ High-level algorithm:
 3. create `undo_operation_id`
 4. for each original detail row:
    - `compensating_amount = -original_amount_agoras`
-5. validate that applying all compensating amounts would not create negative balances
+5. validate that applying all compensating amounts would not create negative balances. This check may be delegated to the server — `rpc_commit_fund_operation` always enforces the negative-balance invariant and raises `ERR_INVARIANT:NEGATIVE_BALANCE` if the check fails. Client-side pre-validation is optional.
 6. call `rpc_commit_fund_operation` with:
    - summary type `Undo`
    - detail rows with `transaction_type = Undo`
@@ -1500,9 +1504,9 @@ High-level algorithm:
 ### E8.8 RPC: `app.rpc_delete_scheduled_deposit(scheduled_deposit_id)`
 High-level algorithm:
 1. validate ownership and active portfolio
-2. delete the scheduled deposit row
-3. no existing history rows are touched
-4. past occurrence rows may remain for audit
+2. delete all occurrence rows for this scheduled deposit (required by the FK constraint)
+3. delete the scheduled deposit row
+4. no transaction history rows are touched — the audit trail is preserved in the `transactions` table regardless of occurrence deletion
 
 ### E8.9 RPC: `app.rpc_execute_due_scheduled_deposits(portfolio_id, now_utc, device_id)`
 Purpose:
@@ -1523,6 +1527,7 @@ High-level algorithm per due scheduled deposit:
       - write summary type `ScheduledDepositExecuted`
       - write detail type `FundDeposit`
       - note on summary row: `SD:<scheduled_deposit_id> <optional text>`
+      - summary text language: server-generated summary texts (e.g. for `ScheduledDepositExecuted`) are stored in the language the server writes them. The client UI translates these for display using the `TransactionTypeLabels` mapping; the raw stored text is not shown directly to users.
       - set occurrence status to `Done`
       - store `operation_id`
       - advance `next_run_at_utc` to the next scheduled time
@@ -1573,32 +1578,35 @@ Reason:
 ### E9.1 Transaction history CSV
 The app must support exporting history to CSV.
 
-Recommended columns:
-- `committed_at_utc`
-- `operation_id`
-- `transaction_id`
-- `record_kind`
-- `transaction_type`
-- `portfolio_id`
-- `fund_id`
-- `fund_name`
-- `amount_agoras`
-- `summary_text`
-- `note`
+The export covers the **currently displayed (filtered) view**, not necessarily the full unfiltered history. This lets users export exactly the range or subset they are looking at.
 
-The export may contain one row per history row.
-This is the simplest and most faithful representation.
+Implemented columns (Hebrew headers, human-readable money):
+- `תאריך` — committed timestamp in local time (`yyyy-MM-dd HH:mm`)
+- `סוג` — Hebrew transaction type label
+- `סיכום` — summary text (summary rows only)
+- `קרן` — resolved fund name (detail rows only)
+- `סכום` — formatted amount (e.g. `1,234.56 ₪`)
+- `יתרה לפני` — fund balance before the change (detail rows only, when available)
+- `יתרה אחרי` — fund balance after the change (detail rows only, when available)
+
+Each operation produces one summary row followed by its detail rows.
+UTF-8 with BOM encoding is used for Excel compatibility with Hebrew text.
 
 ### E9.2 Portfolio snapshot CSV
-Recommended columns:
-- `portfolio_id`
-- `portfolio_name`
-- `fund_id`
-- `fund_name`
-- `balance_agoras`
-- `allocation_percent`
+Exports the current fund list of a portfolio as a CSV.
 
-Allocation percent is derived at export time.
+The export covers all funds currently shown in the portfolio view, in the current UI sort order.
+
+Implemented columns (Hebrew headers, human-readable money):
+- `שם תיק` — portfolio name
+- `מזהה תיק` — portfolio UUID
+- `שם קרן` — fund name
+- `מזהה קרן` — fund UUID
+- `יתרה` — formatted balance (e.g. `1,234.56 ₪`)
+- `אחוז הקצאה` — derived allocation percent (e.g. `33.3%`)
+
+Allocation percent is derived at export time from the loaded fund data.
+UTF-8 with BOM encoding is used for Excel compatibility with Hebrew text.
 
 ---
 

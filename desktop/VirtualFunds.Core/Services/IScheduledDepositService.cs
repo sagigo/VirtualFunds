@@ -24,7 +24,7 @@ public interface IScheduledDepositService
     /// <param name="fundId">The target fund to deposit into.</param>
     /// <param name="name">Display name for the scheduled deposit.</param>
     /// <param name="amountAgoras">Amount per execution in agoras (must be &gt; 0).</param>
-    /// <param name="scheduleKind">One of: "OneTime", "Daily", "Weekly", "Monthly".</param>
+    /// <param name="scheduleKind">The schedule kind (E8.2).</param>
     /// <param name="isEnabled">Whether the deposit should be active.</param>
     /// <param name="note">Optional note attached to each execution.</param>
     /// <param name="timeOfDayMinutes">Minutes since midnight Israel time (0–1439). Required for Daily/Weekly/Monthly.</param>
@@ -43,7 +43,7 @@ public interface IScheduledDepositService
         Guid fundId,
         string name,
         long amountAgoras,
-        string scheduleKind,
+        ScheduleKind scheduleKind,
         bool isEnabled,
         string? note,
         int? timeOfDayMinutes,

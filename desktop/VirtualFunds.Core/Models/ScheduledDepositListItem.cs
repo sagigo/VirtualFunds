@@ -13,12 +13,12 @@ public class ScheduledDepositListItem
         ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳"];
 
     // ---- Hebrew schedule kind labels ----
-    private static readonly Dictionary<string, string> ScheduleKindLabels = new()
+    private static readonly Dictionary<ScheduleKind, string> ScheduleKindLabels = new()
     {
-        ["OneTime"] = "חד פעמי",
-        ["Daily"] = "יומי",
-        ["Weekly"] = "שבועי",
-        ["Monthly"] = "חודשי",
+        [ScheduleKind.OneTime] = "חד פעמי",
+        [ScheduleKind.Daily]   = "יומי",
+        [ScheduleKind.Weekly]  = "שבועי",
+        [ScheduleKind.Monthly] = "חודשי",
     };
 
     /// <summary>Unique identifier of the scheduled deposit.</summary>
@@ -42,8 +42,8 @@ public class ScheduledDepositListItem
     /// <summary>Amount to deposit per execution, in agoras.</summary>
     public long AmountAgoras { get; init; }
 
-    /// <summary>Schedule kind: "OneTime", "Daily", "Weekly", or "Monthly".</summary>
-    public string ScheduleKind { get; init; } = string.Empty;
+    /// <summary>The schedule kind (E8.2).</summary>
+    public ScheduleKind ScheduleKind { get; init; }
 
     /// <summary>Minutes since midnight in Israel time (0–1439), or null for OneTime.</summary>
     public int? TimeOfDayMinutes { get; init; }
@@ -88,14 +88,14 @@ public class ScheduledDepositListItem
     {
         get
         {
-            var kindLabel = ScheduleKindLabels.GetValueOrDefault(ScheduleKind, ScheduleKind);
+            var kindLabel = ScheduleKindLabels.GetValueOrDefault(ScheduleKind, ScheduleKind.ToString());
 
             return ScheduleKind switch
             {
-                "OneTime" => $"{kindLabel} — {FormattedNextRun}",
-                "Daily" => $"{kindLabel} — {FormatTime()}",
-                "Weekly" => $"{kindLabel} — {FormatWeekdays()} — {FormatTime()}",
-                "Monthly" => $"{kindLabel} — יום {DayOfMonth} — {FormatTime()}",
+                Models.ScheduleKind.OneTime => $"{kindLabel} — {FormattedNextRun}",
+                Models.ScheduleKind.Daily   => $"{kindLabel} — {FormatTime()}",
+                Models.ScheduleKind.Weekly  => $"{kindLabel} — {FormatWeekdays()} — {FormatTime()}",
+                Models.ScheduleKind.Monthly => $"{kindLabel} — יום {DayOfMonth} — {FormatTime()}",
                 _ => kindLabel,
             };
         }

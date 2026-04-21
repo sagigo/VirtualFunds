@@ -15,7 +15,7 @@ public record ScheduledDepositFormResult(
     string Name,
     Guid FundId,
     long AmountAgoras,
-    string ScheduleKind,
+    ScheduleKind ScheduleKind,
     bool IsEnabled,
     string? Note,
     int? TimeOfDayMinutes,
@@ -242,7 +242,7 @@ public sealed partial class ScheduledDepositsViewModel : ObservableObject
                 deposit.TimeOfDayMinutes,
                 deposit.WeekdayMask,
                 deposit.DayOfMonth,
-                deposit.ScheduleKind == "OneTime" ? deposit.NextRunAtUtc : null,
+                deposit.ScheduleKind == ScheduleKind.OneTime ? deposit.NextRunAtUtc : null,
                 scheduledDepositId: deposit.ScheduledDepositId);
 
             await LoadScheduledDepositsAsync();

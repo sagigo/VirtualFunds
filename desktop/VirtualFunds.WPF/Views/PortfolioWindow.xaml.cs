@@ -41,6 +41,7 @@ public partial class PortfolioWindow : Window
         _viewModel.TransferRequested += OnTransferRequested;
         _viewModel.BackRequested += OnBackRequested;
         _viewModel.ScheduledDepositsRequested += OnScheduledDepositsRequested;
+        _viewModel.SnapshotExportPathRequested += OnSnapshotExportPathRequested;
 
         // Subscribe to history VM events.
         _viewModel.HistoryViewModel.CsvExportPathRequested += OnCsvExportPathRequested;
@@ -182,6 +183,26 @@ public partial class PortfolioWindow : Window
             Filter = "CSV files (*.csv)|*.csv",
             DefaultExt = ".csv",
             FileName = $"היסטוריה_{_viewModel.PortfolioName}_{DateTime.Now:yyyyMMdd}",
+        };
+
+        var result = dialog.ShowDialog(this) == true
+            ? dialog.FileName
+            : null;
+
+        return Task.FromResult(result);
+    }
+
+    /// <summary>
+    /// Shows a <see cref="SaveFileDialog"/> for the portfolio snapshot CSV export (PR-9, E9.2).
+    /// </summary>
+    /// <returns>The chosen file path, or <c>null</c> if the user cancelled.</returns>
+    private Task<string?> OnSnapshotExportPathRequested()
+    {
+        var dialog = new SaveFileDialog
+        {
+            Filter = "CSV files (*.csv)|*.csv",
+            DefaultExt = ".csv",
+            FileName = $"תמונת_מצב_{_viewModel.PortfolioName}_{DateTime.Now:yyyyMMdd}",
         };
 
         var result = dialog.ShowDialog(this) == true

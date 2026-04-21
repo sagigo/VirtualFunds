@@ -26,8 +26,8 @@ public partial class ScheduledDepositFormDialog : Window
     /// <summary>The deposit amount in agoras.</summary>
     public long AmountAgoras { get; private set; }
 
-    /// <summary>The selected schedule kind ("OneTime", "Daily", "Weekly", "Monthly").</summary>
-    public string ScheduleKind { get; private set; } = string.Empty;
+    /// <summary>The selected schedule kind (E8.2).</summary>
+    public ScheduleKind ScheduleKind { get; private set; }
 
     /// <summary>Whether the deposit is enabled.</summary>
     public bool IsDepositEnabled => EnabledCheckBox.IsChecked == true;
@@ -97,7 +97,7 @@ public partial class ScheduledDepositFormDialog : Window
             // Select the schedule kind.
             for (var i = 0; i < ScheduleKindComboBox.Items.Count; i++)
             {
-                if (ScheduleKindComboBox.Items[i] is ComboBoxItem item && (string)item.Tag == existing.ScheduleKind)
+                if (ScheduleKindComboBox.Items[i] is ComboBoxItem item && (string)item.Tag == existing.ScheduleKind.ToString())
                 {
                     ScheduleKindComboBox.SelectedIndex = i;
                     break;
@@ -118,7 +118,7 @@ public partial class ScheduledDepositFormDialog : Window
             if (existing.DayOfMonth.HasValue)
                 DayOfMonthComboBox.SelectedItem = existing.DayOfMonth.Value;
 
-            if (existing.ScheduleKind == "OneTime")
+            if (existing.ScheduleKind == ScheduleKind.OneTime)
             {
                 var israelTime = IsraelTimeHelper.ToIsraelTime(existing.NextRunAtUtc);
                 OneTimeDatePicker.SelectedDate = israelTime.Date;
@@ -211,7 +211,8 @@ public partial class ScheduledDepositFormDialog : Window
             ShowError("נא לבחור סוג תזמון."); return;
         }
 
-        ScheduleKind = (string)kindItem.Tag;
+        // Use the tag string for switch logic; convert to enum only after validation.
+        var kindTag = (string)kindItem.Tag;
 
         // Reset schedule-specific outputs.
         TimeOfDayMinutes = null;
@@ -219,7 +220,7 @@ public partial class ScheduledDepositFormDialog : Window
         DayOfMonth = null;
         NextRunAtUtc = null;
 
-        switch (ScheduleKind)
+        switch (kindTag)
         {
             case "Daily":
             case "Weekly":
@@ -230,7 +231,7 @@ public partial class ScheduledDepositFormDialog : Window
                 }
                 TimeOfDayMinutes = minutes;
 
-                if (ScheduleKind == "Weekly")
+                if (kindTag == "Weekly")
                 {
                     var mask = ComputeWeekdayMask();
                     if (mask == 0)
@@ -240,7 +241,7 @@ public partial class ScheduledDepositFormDialog : Window
                     WeekdayMask = mask;
                 }
 
-                if (ScheduleKind == "Monthly")
+                if (kindTag == "Monthly")
                 {
                     if (DayOfMonthComboBox.SelectedItem is int day)
                         DayOfMonth = day;
@@ -259,6 +260,8 @@ public partial class ScheduledDepositFormDialog : Window
                 NextRunAtUtc = utcTime;
                 break;
         }
+
+        ScheduleKind = Enum.Parse<ScheduleKind>(kindTag);
 
         DialogResult = true;
     }

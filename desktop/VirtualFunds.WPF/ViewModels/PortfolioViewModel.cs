@@ -77,6 +77,12 @@ public sealed partial class PortfolioViewModel : ObservableObject
     /// </summary>
     public event Func<ScheduledDepositsViewModel, Task>? ScheduledDepositsRequested;
 
+    /// <summary>
+    /// Raised when the user requests a portfolio snapshot CSV export (PR-9, E9.2).
+    /// The View shows a SaveFileDialog and returns the chosen file path, or null if cancelled.
+    /// </summary>
+    public event Func<Task<string?>>? SnapshotExportPathRequested;
+
     // -----------------------------------------------------------------------------------------
     // Sort state (E5.10) — presentation-only, no money logic depends on this
     // -----------------------------------------------------------------------------------------
@@ -169,7 +175,7 @@ public sealed partial class PortfolioViewModel : ObservableObject
         _portfolioName = portfolioName;
         _historyViewModel = historyViewModel;
 
-        // Default sort mode: alphabetical by name (matches server order, E5.10).
+        // Default sort mode: creation date, oldest first (E5.10).
         _selectedSortOption = SortOptions[0];
 
         // When an undo operation completes in the history panel, refresh fund balances.
@@ -597,7 +603,7 @@ public sealed partial class PortfolioViewModel : ObservableObject
     [RelayCommand]
     private async Task DeletePortfolioAsync()
     {
-        var confirmed = await ConfirmationRequested!.Invoke($"האם אתה בטוח שברצונך למחוק את התיק \"{PortfolioName}\"?");
+        var confirmed = await ConfirmationRequested!.Invoke($"האם אתה בטוח שברצונך לסגור את התיק \"{PortfolioName}\"?");
 
         if (!confirmed)
             return;
@@ -710,6 +716,34 @@ public sealed partial class PortfolioViewModel : ObservableObject
         // Refresh funds — the user may have created/deleted/toggled deposits,
         // and the dialog may have triggered executions that changed balances.
         await LoadFundsAsync();
+    }
+
+    /// <summary>
+    /// Exports the current fund list as a portfolio snapshot CSV (PR-9, E9.2).
+    /// Delegates file path selection to the View via <see cref="SnapshotExportPathRequested"/>.
+    /// </summary>
+    [RelayCommand]
+    private async Task ExportSnapshotAsync()
+    {
+        if (SnapshotExportPathRequested == null) return;
+
+        var filePath = await SnapshotExportPathRequested.Invoke();
+        if (filePath == null) return; // User cancelled.
+
+        ErrorMessage = string.Empty;
+
+        try
+        {
+            await PortfolioSnapshotCsvExporter.ExportToFileAsync(
+                _portfolioId,
+                _portfolioName,
+                Funds.ToList(),
+                filePath);
+        }
+        catch (Exception)
+        {
+            ErrorMessage = "שגיאה בייצוא תמונת המצב.";
+        }
     }
 
     /// <summary>

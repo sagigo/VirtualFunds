@@ -70,7 +70,7 @@ public sealed class SupabaseScheduledDepositService : IScheduledDepositService
         Guid fundId,
         string name,
         long amountAgoras,
-        string scheduleKind,
+        ScheduleKind scheduleKind,
         bool isEnabled,
         string? note,
         int? timeOfDayMinutes,
@@ -89,7 +89,7 @@ public sealed class SupabaseScheduledDepositService : IScheduledDepositService
                     p_fund_id = fundId,
                     p_name = name,
                     p_amount_agoras = amountAgoras,
-                    p_schedule_kind = scheduleKind,
+                    p_schedule_kind = scheduleKind.ToString(), // RPC expects a text value
                     p_is_enabled = isEnabled,
                     p_note = note,
                     p_time_of_day_minutes = timeOfDayMinutes,

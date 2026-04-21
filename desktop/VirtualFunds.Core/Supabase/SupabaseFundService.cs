@@ -308,17 +308,15 @@ public sealed class SupabaseFundService : IFundService
         if (newTotalAgoras == oldTotalAgoras)
             return null;
 
-        // Step 4: Compute provisional new balances using banker's rounding.
-        // Uses decimal arithmetic to avoid floating-point precision issues.
+        // Step 4: Compute provisional new balances using pure-integer banker's rounding (E6.4).
+        // IntegerMath.BankersRound uses Int128 internally to avoid overflow.
         var workItems = funds
             .Select(f => new
             {
                 f.FundId,
                 OldBalance = f.BalanceAgoras,
-                ProvisionalNewBalance = (long)Math.Round(
-                    (decimal)newTotalAgoras * f.BalanceAgoras / oldTotalAgoras,
-                    0,
-                    MidpointRounding.ToEven),
+                ProvisionalNewBalance = IntegerMath.BankersRound(
+                    (Int128)newTotalAgoras * f.BalanceAgoras, oldTotalAgoras),
             })
             .ToList();
 
