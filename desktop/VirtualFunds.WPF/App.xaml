@@ -2,14 +2,37 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:VirtualFunds.WPF"
-             xmlns:converters="clr-namespace:VirtualFunds.WPF.Converters">
+             xmlns:converters="clr-namespace:VirtualFunds.WPF.Converters"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
     <!-- StartupUri is removed — startup is handled programmatically in App.xaml.cs OnStartup. -->
     <Application.Resources>
-        <!-- Converters registered here are available to all Views in the application. -->
-        <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
-        <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
-        <converters:InverseBooleanConverter x:Key="InverseBooleanConverter" />
-        <!-- Built-in WPF converter: bool true → Visible, false → Collapsed. -->
-        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!--
+                    BundledTheme bootstraps the MaterialDesign v5 theming engine.
+                    It applies the light theme and sets primary/secondary color swatches.
+                    Our exact brand hex (#5C35D9) overrides these in Resources/Theme.xaml.
+                -->
+                <materialDesign:BundledTheme BaseTheme="Light" PrimaryColor="Blue" SecondaryColor="Teal" />
+                <!--
+                    MaterialDesign2.Defaults.xaml applies all MD2 control templates and named
+                    styles (e.g. MaterialDesignOutlinedTextBox, MaterialDesignRaisedButton, etc.)
+                    to every standard WPF control in the app.
+                    NOTE: In v5 the old "MaterialDesignTheme.Defaults.xaml" was renamed to
+                    "MaterialDesign2.Defaults.xaml" — the v4 name no longer exists in the package.
+                -->
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign2.Defaults.xaml" />
+                <!-- Custom brand colors, brush definitions, and reusable named styles. -->
+                <ResourceDictionary Source="Resources/Theme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- Converters registered here are available to all Views in the application. -->
+            <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
+            <converters:SignedAmountToBrushConverter x:Key="SignedAmountToBrushConverter" />
+            <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
+            <converters:InverseBooleanConverter x:Key="InverseBooleanConverter" />
+            <!-- Built-in WPF converter: bool true → Visible, false → Collapsed. -->
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        </ResourceDictionary>
     </Application.Resources>
 </Application>

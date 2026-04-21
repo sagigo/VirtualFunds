@@ -1,75 +1,92 @@
 <Window x:Class="VirtualFunds.WPF.Views.TransferDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         Title="העברה בין קרנות"
-        Height="250" Width="380"
+        Height="300"
+        Width="380"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
-        FlowDirection="RightToLeft">
-    <Grid Margin="16">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
+        FlowDirection="RightToLeft"
+        Background="{StaticResource BackgroundBrush}"
+        TextElement.Foreground="{StaticResource TextPrimaryBrush}"
+        TextElement.FontFamily="{materialDesign:MaterialDesignFont}">
 
-        <!-- Source fund (read-only) -->
-        <TextBlock Grid.Row="0"
-                   Text="מקרן:"
-                   Margin="0,0,0,4" />
-        <TextBlock Grid.Row="1"
-                   x:Name="SourceFundText"
-                   FontWeight="SemiBold"
-                   Margin="0,0,0,12" />
+    <DockPanel>
+        <!-- Purple accent strip at top of dialog -->
+        <Border DockPanel.Dock="Top"
+                Height="4"
+                Background="{StaticResource PrimaryBrush}" />
 
-        <!-- Destination fund -->
-        <TextBlock Grid.Row="2"
-                   Text="לקרן:"
-                   Margin="0,0,0,4" />
-        <ComboBox Grid.Row="3"
-                  x:Name="DestinationComboBox"
-                  DisplayMemberPath="Name"
-                  Margin="0,0,0,12"
-                  Padding="4" />
+        <!-- Form content -->
+        <Border Style="{StaticResource DialogCardStyle}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
 
-        <!-- Amount -->
-        <TextBlock Grid.Row="4"
-                   Text="סכום ₪:"
-                   Margin="0,0,0,4" />
-        <TextBox Grid.Row="5"
-                 x:Name="AmountTextBox"
-                 Margin="0,0,0,2"
-                 Padding="4"
-                 FlowDirection="LeftToRight"
-                 MaxLength="20" />
+                <!-- Source fund (read-only) -->
+                <TextBlock Grid.Row="0"
+                           Text="מקרן:"
+                           Style="{StaticResource FieldLabelStyle}" />
+                <TextBlock Grid.Row="1"
+                           x:Name="SourceFundText"
+                           FontWeight="SemiBold"
+                           Foreground="{StaticResource PrimaryBrush}"
+                           Margin="0,0,0,12" />
 
-        <!-- Validation error -->
-        <TextBlock Grid.Row="6"
-                   x:Name="HintText"
-                   Text=""
-                   Foreground="Gray"
-                   FontSize="11"
-                   Margin="0,4,0,0" />
+                <!-- Destination fund -->
+                <TextBlock Grid.Row="2"
+                           Text="לקרן:"
+                           Style="{StaticResource FieldLabelStyle}" />
+                <ComboBox Grid.Row="3"
+                          x:Name="DestinationComboBox"
+                          DisplayMemberPath="Name"
+                          Margin="0,0,0,12" />
 
-        <!-- Buttons -->
-        <StackPanel Grid.Row="7"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Left">
-            <Button Content="העבר"
-                    MinWidth="70"
-                    Padding="12,4"
-                    Margin="0,0,8,0"
-                    IsDefault="True"
-                    Click="OkButton_Click" />
-            <Button Content="ביטול"
-                    MinWidth="70"
-                    Padding="12,4"
-                    IsCancel="True" />
-        </StackPanel>
-    </Grid>
+                <!-- Amount -->
+                <TextBlock Grid.Row="4"
+                           Text="סכום ₪:"
+                           Style="{StaticResource FieldLabelStyle}" />
+                <TextBox Grid.Row="5"
+                         x:Name="AmountTextBox"
+                         Margin="0,0,0,2"
+                         FlowDirection="LeftToRight"
+                         MaxLength="20"
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}" />
+
+                <!-- Validation hint -->
+                <TextBlock Grid.Row="6"
+                           x:Name="HintText"
+                           Text=""
+                           Style="{StaticResource HintTextStyle}"
+                           Margin="0,4,0,0" />
+
+                <!-- Buttons -->
+                <StackPanel Grid.Row="7"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Left">
+                    <Button Content="העבר"
+                            MinWidth="70"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Padding="12,6"
+                            Margin="0,0,8,0"
+                            IsDefault="True"
+                            Click="OkButton_Click" />
+                    <Button Content="ביטול"
+                            MinWidth="70"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Padding="12,6"
+                            IsCancel="True" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </DockPanel>
 </Window>

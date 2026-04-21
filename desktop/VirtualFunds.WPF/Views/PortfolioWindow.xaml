@@ -3,96 +3,121 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         mc:Ignorable="d"
         Title="{Binding PortfolioName, StringFormat='קרנות וירטואליות — {0}'}"
         Height="600" Width="1100"
         WindowStartupLocation="CenterScreen"
-        FlowDirection="RightToLeft">
+        FlowDirection="RightToLeft"
+        Background="{StaticResource BackgroundBrush}"
+        TextElement.Foreground="{StaticResource TextPrimaryBrush}"
+        TextElement.FontFamily="{materialDesign:MaterialDesignFont}">
 
-    <DockPanel Margin="16">
+    <DockPanel>
 
-        <!-- Top: Header with back button, portfolio name, total, and create fund button -->
-        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-            <Button Content="← חזרה"
-                    Command="{Binding GoBackCommand}"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Center"
-                    Padding="12,4" />
-            <Button Content="+ קרן חדשה"
-                    Command="{Binding CreateFundCommand}"
-                    IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBooleanConverter}}"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Center"
-                    Padding="12,4"
-                    Margin="8,0,0,0" />
-            <TextBlock Text="{Binding FormattedTotal}"
-                       FontSize="14"
-                       Foreground="Gray"
-                       VerticalAlignment="Center"
-                       HorizontalAlignment="Left"
-                       Margin="12,0,0,0"
-                       FlowDirection="LeftToRight" />
-            <TextBlock Text="{Binding PortfolioName}"
-                       FontSize="20"
-                       FontWeight="Bold"
-                       VerticalAlignment="Center" />
-        </DockPanel>
+        <!-- ══════════════════════════════════════════════════
+             HEADER — full-width purple bar
+             RTL order: [back btn | create btn | total] ... [portfolio name]
+             ══════════════════════════════════════════════════ -->
+        <Border DockPanel.Dock="Top" Style="{StaticResource HeaderBarStyle}">
+            <DockPanel>
+                <!-- Back button (right side in RTL = visual left) -->
+                <Button Content="→ חזרה"
+                        Command="{Binding GoBackCommand}"
+                        Style="{StaticResource GhostWhiteButtonStyle}"
+                        VerticalAlignment="Center"
+                        DockPanel.Dock="Right" />
 
-        <!-- Error message (portfolio-level) -->
+                <!-- Create fund button -->
+                <Button Content="+ קרן חדשה"
+                        Command="{Binding CreateFundCommand}"
+                        IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBooleanConverter}}"
+                        Style="{StaticResource HeaderPrimaryButtonStyle}"
+                        VerticalAlignment="Center"
+                        Margin="0,0,8,0"
+                        DockPanel.Dock="Left" />
+
+                <!-- Portfolio total (left side in RTL) -->
+                <TextBlock Text="{Binding FormattedTotal}"
+                           Style="{StaticResource HeaderTotalStyle}"
+                           DockPanel.Dock="Left"
+                           Margin="12,0,0,0"
+                           FlowDirection="LeftToRight" />
+
+                <!-- Portfolio name fills the center -->
+                <TextBlock Text="{Binding PortfolioName}"
+                           Style="{StaticResource HeaderTitleStyle}"
+                           HorizontalAlignment="Center" />
+            </DockPanel>
+        </Border>
+
+        <!-- Portfolio-level error message -->
         <TextBlock DockPanel.Dock="Top"
                    Text="{Binding ErrorMessage}"
-                   Foreground="Red"
+                   Foreground="{StaticResource ErrorBrush}"
                    TextWrapping="Wrap"
-                   Margin="0,0,0,4"
+                   Margin="16,8,16,0"
                    Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibilityConverter}}" />
 
-        <!-- Bottom: portfolio actions -->
-        <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
-            <Separator Margin="0,0,0,8" />
+        <!-- ══════════════════════════════════════════════════
+             BOTTOM — portfolio-level actions
+             ══════════════════════════════════════════════════ -->
+        <Border DockPanel.Dock="Bottom"
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource CardBorderBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="16,10">
             <StackPanel Orientation="Horizontal">
                 <Button Content="שנה שם תיק"
                         Command="{Binding RenamePortfolioCommand}"
                         IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBooleanConverter}}"
-                        Padding="12,4" />
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Padding="12,6" />
                 <Button Content="עדכון שווי"
                         Command="{Binding RevaluePortfolioCommand}"
                         IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBooleanConverter}}"
-                        Padding="12,4"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Padding="12,6"
                         Margin="8,0,0,0" />
                 <Button Content="מחק תיק"
                         Command="{Binding DeletePortfolioCommand}"
                         IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBooleanConverter}}"
-                        Padding="12,4"
+                        Style="{StaticResource DangerButtonStyle}"
+                        Padding="12,6"
                         Margin="8,0,0,0" />
                 <Button Content="הפקדות מתוזמנות"
                         Command="{Binding ManageScheduledDepositsCommand}"
                         IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBooleanConverter}}"
-                        Padding="12,4"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Padding="12,6"
                         Margin="8,0,0,0" />
             </StackPanel>
-        </StackPanel>
+        </Border>
 
-        <!-- Center: Side-by-side split — Funds (right in RTL) | Splitter | History (left in RTL) -->
-        <Grid>
+        <!-- ══════════════════════════════════════════════════
+             CENTER — Side-by-side split
+             Funds (right in RTL) | Splitter | History (left in RTL)
+             ══════════════════════════════════════════════════ -->
+        <Grid Margin="16,12,16,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" MinWidth="250" />
                 <ColumnDefinition Width="5" />
                 <ColumnDefinition Width="*" MinWidth="300" />
             </Grid.ColumnDefinitions>
 
-            <!-- ==================== Left panel (RTL = right side): Funds ==================== -->
+            <!-- ══════════ LEFT PANEL (RTL = right side): Funds ══════════ -->
             <DockPanel Grid.Column="0">
 
                 <!-- Section header -->
                 <TextBlock DockPanel.Dock="Top"
                            Text="קרנות"
-                           FontSize="15"
-                           FontWeight="SemiBold"
-                           Margin="0,0,0,6" />
+                           Style="{StaticResource SectionHeaderStyle}" />
 
                 <!-- Sort controls (E5.10) -->
-                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
-                    <TextBlock Text="מיון:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+                    <TextBlock Text="מיון:"
+                               Style="{StaticResource MutedLabelStyle}"
+                               Margin="0,0,6,0" />
                     <ComboBox ItemsSource="{Binding SortOptions}"
                               SelectedItem="{Binding SelectedSortOption, Mode=TwoWay}"
                               DisplayMemberPath="Label"
@@ -100,47 +125,52 @@
                               IsEditable="False" />
                     <Button Content="↑"
                             Command="{Binding MoveSelectedFundUpCommand}"
-                            Padding="8,4"
+                            Style="{StaticResource SmallGhostButtonStyle}"
                             Margin="6,0,0,0"
                             ToolTip="הזז למעלה" />
                     <Button Content="↓"
                             Command="{Binding MoveSelectedFundDownCommand}"
-                            Padding="8,4"
-                            Margin="4,0,0,0"
+                            Style="{StaticResource SmallGhostButtonStyle}"
+                            Margin="2,0,0,0"
                             ToolTip="הזז למטה" />
                 </StackPanel>
 
                 <!-- Fund operations toolbar -->
-                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
                     <Button Content="הפקדה"
                             Command="{Binding DepositCommand}"
                             CommandParameter="{Binding SelectedFund}"
                             IsEnabled="{Binding CanExecuteFundOperation}"
-                            Padding="10,4" />
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Padding="10,6" />
                     <Button Content="משיכה"
                             Command="{Binding WithdrawCommand}"
                             CommandParameter="{Binding SelectedFund}"
                             IsEnabled="{Binding CanExecuteFundOperation}"
-                            Padding="10,4"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Padding="10,6"
                             Margin="4,0,0,0" />
                     <Button Content="העברה"
                             Command="{Binding TransferCommand}"
                             CommandParameter="{Binding SelectedFund}"
                             IsEnabled="{Binding CanExecuteFundOperation}"
-                            Padding="10,4"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Padding="10,6"
                             Margin="4,0,0,0" />
                     <Separator Width="1" Margin="8,2" />
                     <Button Content="שנה שם"
                             Command="{Binding RenameFundCommand}"
                             CommandParameter="{Binding SelectedFund}"
                             IsEnabled="{Binding CanExecuteFundOperation}"
-                            Padding="10,4"
+                            Style="{StaticResource GhostButtonStyle}"
+                            Padding="10,6"
                             Margin="4,0,0,0" />
                     <Button Content="מחק קרן"
                             Command="{Binding DeleteFundCommand}"
                             CommandParameter="{Binding SelectedFund}"
                             IsEnabled="{Binding CanExecuteFundOperation}"
-                            Padding="10,4"
+                            Style="{StaticResource DangerButtonStyle}"
+                            Padding="10,6"
                             Margin="4,0,0,0" />
                 </StackPanel>
 
@@ -148,6 +178,7 @@
                 <TextBlock DockPanel.Dock="Top"
                            Text="טוען..."
                            HorizontalAlignment="Center"
+                           Style="{StaticResource MutedLabelStyle}"
                            Margin="0,8,0,8"
                            Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
@@ -157,10 +188,9 @@
                     <TextBlock Text="אין קרנות בתיק זה. לחץ על '+ קרן חדשה' כדי להתחיל."
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"
-                               FontSize="14"
-                               Foreground="Gray">
+                               FontSize="13">
                         <TextBlock.Style>
-                            <Style TargetType="TextBlock">
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource MutedLabelStyle}">
                                 <Setter Property="Visibility" Value="Collapsed" />
                                 <Style.Triggers>
                                     <MultiDataTrigger>
@@ -180,7 +210,10 @@
                              ItemsSource="{Binding Funds}"
                              SelectedItem="{Binding SelectedFund}"
                              BorderThickness="0"
-                             HorizontalContentAlignment="Stretch">
+                             Background="Transparent"
+                             HorizontalContentAlignment="Stretch"
+                             AlternationCount="3"
+                             ItemContainerStyle="{StaticResource CardListBoxItemStyle}">
                         <ListBox.Style>
                             <Style TargetType="ListBox">
                                 <Setter Property="Visibility" Value="Visible" />
@@ -193,9 +226,17 @@
                         </ListBox.Style>
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <DockPanel Margin="4,8">
-                                    <!-- Right-click context menu -->
-                                    <DockPanel.ContextMenu>
+                                <!--
+                                    Card with purple accent bar on the right (RTL leading edge).
+                                    ClipToBounds clips the accent bar flush to the card's rounded corners.
+                                -->
+                                <Border Margin="0,0,0,6"
+                                        Background="{StaticResource SurfaceBrush}"
+                                        BorderBrush="{StaticResource CardBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="10"
+                                        ClipToBounds="True">
+                                    <Border.ContextMenu>
                                         <ContextMenu>
                                             <MenuItem Header="הפקדה"
                                                       Command="{Binding DataContext.DepositCommand,
@@ -220,30 +261,50 @@
                                                           Source={x:Reference FundListBox}}"
                                                       CommandParameter="{Binding}" />
                                         </ContextMenu>
-                                    </DockPanel.ContextMenu>
+                                    </Border.ContextMenu>
+                                    <DockPanel>
+                                        <!-- Accent bar: right = visual leading edge in RTL.
+                                             Color rotates blue → teal → amber via AlternationCount="3". -->
+                                        <Border DockPanel.Dock="Right">
+                                            <Border.Style>
+                                                <Style TargetType="Border" BasedOn="{StaticResource AccentBarStyle}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding (ItemsControl.AlternationIndex),
+                                                            RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="1">
+                                                            <Setter Property="Background" Value="{StaticResource TealBrush}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding (ItemsControl.AlternationIndex),
+                                                            RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="2">
+                                                            <Setter Property="Background" Value="{StaticResource AmberBrush}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                        </Border>
 
-                                    <!-- Balance (left side in RTL) -->
-                                    <TextBlock DockPanel.Dock="Left"
-                                               Text="{Binding FormattedBalance}"
-                                               FontSize="14"
-                                               Foreground="Gray"
-                                               VerticalAlignment="Center"
-                                               FlowDirection="LeftToRight" />
+                                        <!-- Item content with padding -->
+                                        <DockPanel Margin="12,10,8,10">
 
-                                    <!-- Allocation percent -->
-                                    <TextBlock DockPanel.Dock="Left"
-                                               Text="{Binding FormattedAllocation}"
-                                               FontSize="12"
-                                               Foreground="DarkGray"
-                                               VerticalAlignment="Center"
-                                               Margin="12,0,0,0"
-                                               FlowDirection="LeftToRight" />
+                                            <!-- Balance -->
+                                            <TextBlock DockPanel.Dock="Left"
+                                                       Text="{Binding FormattedBalance}"
+                                                       Style="{StaticResource FundBalanceStyle}"
+                                                       MinWidth="90"
+                                                       TextAlignment="Right" />
 
-                                    <!-- Fund name -->
-                                    <TextBlock Text="{Binding Name}"
-                                               FontSize="15"
-                                               VerticalAlignment="Center" />
-                                </DockPanel>
+                                            <!-- Allocation percent -->
+                                            <TextBlock DockPanel.Dock="Left"
+                                                       Text="{Binding FormattedAllocation}"
+                                                       Style="{StaticResource MutedLabelStyle}"
+                                                       Margin="10,0,0,0"
+                                                       FlowDirection="LeftToRight" />
+
+                                            <!-- Fund name fills remaining space -->
+                                            <TextBlock Text="{Binding Name}"
+                                                       Style="{StaticResource FundNameStyle}" />
+                                        </DockPanel>
+                                    </DockPanel>
+                                </Border>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
@@ -251,30 +312,28 @@
 
             </DockPanel>
 
-            <!-- ==================== Draggable splitter ==================== -->
+            <!-- Draggable splitter -->
             <GridSplitter Grid.Column="1"
                           Width="5"
                           HorizontalAlignment="Stretch"
                           VerticalAlignment="Stretch"
-                          Background="LightGray"
+                          Background="{StaticResource SplitterBrush}"
                           Cursor="SizeWE" />
 
-            <!-- ==================== Right panel (RTL = left side): History ==================== -->
+            <!-- ══════════ RIGHT PANEL (RTL = left side): History ══════════ -->
             <DockPanel Grid.Column="2" Margin="8,0,0,0"
                        DataContext="{Binding HistoryViewModel}">
 
                 <!-- Section header -->
                 <TextBlock DockPanel.Dock="Top"
                            Text="היסטוריה"
-                           FontSize="15"
-                           FontWeight="SemiBold"
-                           Margin="0,0,0,6" />
+                           Style="{StaticResource SectionHeaderStyle}" />
 
                 <!-- Filter bar -->
                 <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,8">
                     <!-- Date range: From -->
                     <StackPanel Orientation="Horizontal" Margin="0,0,8,4">
-                        <TextBlock Text="מ:" VerticalAlignment="Center" Margin="0,0,4,0" />
+                        <TextBlock Text="מ:" Style="{StaticResource MutedLabelStyle}" Margin="0,0,4,0" />
                         <DatePicker SelectedDate="{Binding FilterFromDate, Mode=TwoWay}"
                                     FlowDirection="LeftToRight"
                                     Width="120" />
@@ -282,7 +341,7 @@
 
                     <!-- Date range: To -->
                     <StackPanel Orientation="Horizontal" Margin="0,0,8,4">
-                        <TextBlock Text="עד:" VerticalAlignment="Center" Margin="0,0,4,0" />
+                        <TextBlock Text="עד:" Style="{StaticResource MutedLabelStyle}" Margin="0,0,4,0" />
                         <DatePicker SelectedDate="{Binding FilterToDate, Mode=TwoWay}"
                                     FlowDirection="LeftToRight"
                                     Width="120" />
@@ -290,7 +349,7 @@
 
                     <!-- Fund filter -->
                     <StackPanel Orientation="Horizontal" Margin="0,0,8,4">
-                        <TextBlock Text="קרן:" VerticalAlignment="Center" Margin="0,0,4,0" />
+                        <TextBlock Text="קרן:" Style="{StaticResource MutedLabelStyle}" Margin="0,0,4,0" />
                         <ComboBox ItemsSource="{Binding FundFilterOptions}"
                                   SelectedItem="{Binding SelectedFundFilter, Mode=TwoWay}"
                                   DisplayMemberPath="DisplayName"
@@ -300,7 +359,7 @@
 
                     <!-- Type filter -->
                     <StackPanel Orientation="Horizontal" Margin="0,0,8,4">
-                        <TextBlock Text="סוג:" VerticalAlignment="Center" Margin="0,0,4,0" />
+                        <TextBlock Text="סוג:" Style="{StaticResource MutedLabelStyle}" Margin="0,0,4,0" />
                         <ComboBox ItemsSource="{Binding TypeFilterOptions}"
                                   SelectedItem="{Binding SelectedTypeFilter, Mode=TwoWay}"
                                   DisplayMemberPath="DisplayLabel"
@@ -311,12 +370,14 @@
                     <!-- Clear filters -->
                     <Button Content="נקה"
                             Command="{Binding ClearFiltersCommand}"
+                            Style="{StaticResource GhostButtonStyle}"
                             Padding="8,4"
                             Margin="0,0,4,4" />
 
                     <!-- CSV export -->
                     <Button Content="CSV"
                             Command="{Binding ExportCsvCommand}"
+                            Style="{StaticResource SecondaryButtonStyle}"
                             Padding="8,4"
                             Margin="0,0,0,4" />
                 </WrapPanel>
@@ -324,7 +385,7 @@
                 <!-- History error message -->
                 <TextBlock DockPanel.Dock="Top"
                            Text="{Binding ErrorMessage}"
-                           Foreground="Red"
+                           Foreground="{StaticResource ErrorBrush}"
                            TextWrapping="Wrap"
                            Margin="0,0,0,4"
                            Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibilityConverter}}" />
@@ -333,6 +394,7 @@
                 <TextBlock DockPanel.Dock="Top"
                            Text="טוען היסטוריה..."
                            HorizontalAlignment="Center"
+                           Style="{StaticResource MutedLabelStyle}"
                            Margin="0,8,0,8"
                            Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
@@ -342,10 +404,9 @@
                     <TextBlock Text="אין רשומות היסטוריה."
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"
-                               FontSize="14"
-                               Foreground="Gray">
+                               FontSize="13">
                         <TextBlock.Style>
-                            <Style TargetType="TextBlock">
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource MutedLabelStyle}">
                                 <Setter Property="Visibility" Value="Collapsed" />
                                 <Style.Triggers>
                                     <MultiDataTrigger>
@@ -372,31 +433,63 @@
                                 </Style.Triggers>
                             </Style>
                         </ScrollViewer.Style>
-                        <ItemsControl ItemsSource="{Binding Transactions}">
+                        <ItemsControl ItemsSource="{Binding Transactions}"
+                                      AlternationCount="2">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border BorderBrush="LightGray" BorderThickness="0,0,0,1" Padding="4,6">
+                                    <!-- Background alternates white / very light gray for readability -->
+                                    <Border BorderBrush="{StaticResource CardBorderBrush}"
+                                            BorderThickness="0,0,0,1"
+                                            Padding="4,6">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding (ItemsControl.AlternationIndex),
+                                                        RelativeSource={RelativeSource AncestorType=ContentPresenter}}" Value="1">
+                                                        <Setter Property="Background" Value="#F4F6F9" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
                                         <Expander IsExpanded="False">
                                             <Expander.Header>
                                                 <DockPanel Width="{Binding ActualWidth,
                                                     RelativeSource={RelativeSource AncestorType=ContentPresenter}}"
                                                            Margin="0,0,16,0">
 
-                                                    <!-- Amount (left side in RTL) -->
+                                                    <!-- Amount — color-coded to match the transaction type label -->
                                                     <TextBlock DockPanel.Dock="Left"
                                                                Text="{Binding FormattedAmount}"
                                                                FontSize="13"
-                                                               Foreground="Gray"
-                                                               VerticalAlignment="Center"
-                                                               FlowDirection="LeftToRight"
                                                                MinWidth="90"
-                                                               TextAlignment="Right" />
+                                                               TextAlignment="Right">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock" BasedOn="{StaticResource FundBalanceStyle}">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding TransactionType}" Value="FundDeposit">
+                                                                        <Setter Property="Foreground" Value="{StaticResource SuccessBrush}" />
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding TransactionType}" Value="FundWithdrawal">
+                                                                        <Setter Property="Foreground" Value="{StaticResource ErrorBrush}" />
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding TransactionType}" Value="Transfer">
+                                                                        <Setter Property="Foreground" Value="{StaticResource TealBrush}" />
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding TransactionType}" Value="PortfolioRevalued">
+                                                                        <Setter Property="Foreground" Value="{StaticResource AmberBrush}" />
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding TransactionType}" Value="Undo">
+                                                                        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
 
                                                     <!-- Date -->
                                                     <TextBlock DockPanel.Dock="Left"
-                                                               FontSize="12"
-                                                               Foreground="DarkGray"
-                                                               VerticalAlignment="Center"
+                                                               Style="{StaticResource MutedLabelStyle}"
                                                                Margin="12,0,0,0"
                                                                FlowDirection="LeftToRight">
                                                         <TextBlock.Text>
@@ -405,11 +498,71 @@
                                                         </TextBlock.Text>
                                                     </TextBlock>
 
-                                                    <!-- Transaction type label -->
-                                                    <TextBlock Text="{Binding TransactionTypeLabel}"
-                                                               FontSize="14"
-                                                               FontWeight="SemiBold"
-                                                               VerticalAlignment="Center" />
+                                                    <!-- Transaction type icon + label, both color-coded.
+                                                         FlowDirection=LTR keeps icon visually left of the Hebrew text. -->
+                                                    <StackPanel Orientation="Horizontal"
+                                                                VerticalAlignment="Center"
+                                                                FlowDirection="LeftToRight">
+                                                        <materialDesign:PackIcon Width="18" Height="18"
+                                                                                 VerticalAlignment="Center"
+                                                                                 Margin="0,0,5,0">
+                                                            <materialDesign:PackIcon.Style>
+                                                                <Style TargetType="materialDesign:PackIcon">
+                                                                    <Setter Property="Kind"       Value="History" />
+                                                                    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding TransactionType}" Value="FundDeposit">
+                                                                            <Setter Property="Kind"       Value="ArrowDownBold" />
+                                                                            <Setter Property="Foreground" Value="{StaticResource SuccessBrush}" />
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding TransactionType}" Value="FundWithdrawal">
+                                                                            <Setter Property="Kind"       Value="ArrowUpBold" />
+                                                                            <Setter Property="Foreground" Value="{StaticResource ErrorBrush}" />
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding TransactionType}" Value="Transfer">
+                                                                            <Setter Property="Kind"       Value="SwapHorizontal" />
+                                                                            <Setter Property="Foreground" Value="{StaticResource TealBrush}" />
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding TransactionType}" Value="PortfolioRevalued">
+                                                                            <Setter Property="Kind"       Value="TrendingUp" />
+                                                                            <Setter Property="Foreground" Value="{StaticResource AmberBrush}" />
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding TransactionType}" Value="Undo">
+                                                                            <Setter Property="Kind"       Value="Undo" />
+                                                                            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </materialDesign:PackIcon.Style>
+                                                        </materialDesign:PackIcon>
+                                                        <TextBlock Text="{Binding TransactionTypeLabel}"
+                                                                   FontSize="14"
+                                                                   FontWeight="SemiBold"
+                                                                   VerticalAlignment="Center">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding TransactionType}" Value="FundDeposit">
+                                                                            <Setter Property="Foreground" Value="{StaticResource SuccessBrush}" />
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding TransactionType}" Value="FundWithdrawal">
+                                                                            <Setter Property="Foreground" Value="{StaticResource ErrorBrush}" />
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding TransactionType}" Value="Transfer">
+                                                                            <Setter Property="Foreground" Value="{StaticResource TealBrush}" />
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding TransactionType}" Value="PortfolioRevalued">
+                                                                            <Setter Property="Foreground" Value="{StaticResource AmberBrush}" />
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding TransactionType}" Value="Undo">
+                                                                            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </StackPanel>
                                                 </DockPanel>
                                             </Expander.Header>
 
@@ -421,6 +574,7 @@
                                                         Command="{Binding DataContext.UndoOperationCommand,
                                                             RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                         CommandParameter="{Binding}"
+                                                        Style="{StaticResource SecondaryButtonStyle}"
                                                         HorizontalAlignment="Right"
                                                         Padding="8,3"
                                                         Margin="0,0,0,6"
@@ -430,8 +584,7 @@
 
                                                 <!-- Summary text -->
                                                 <TextBlock Text="{Binding SummaryText}"
-                                                           FontSize="12"
-                                                           Foreground="Gray"
+                                                           Style="{StaticResource MutedLabelStyle}"
                                                            Margin="0,0,0,4"
                                                            Visibility="{Binding SummaryText,
                                                                Converter={StaticResource StringToVisibilityConverter}}" />
@@ -447,43 +600,37 @@
                                                                             VerticalAlignment="Center"
                                                                             Margin="0,0,12,0">
                                                                     <TextBlock Text="לפני:"
-                                                                               FontSize="12"
-                                                                               Foreground="DarkGray"
+                                                                               Style="{StaticResource MutedLabelStyle}"
                                                                                VerticalAlignment="Center" />
                                                                     <TextBlock Text="{Binding FormattedBeforeBalance}"
-                                                                               FontSize="12"
-                                                                               Foreground="Gray"
+                                                                               Style="{StaticResource MutedLabelStyle}"
                                                                                VerticalAlignment="Center"
                                                                                Margin="2,0,0,0"
                                                                                FlowDirection="LeftToRight"
                                                                                MinWidth="70"
                                                                                TextAlignment="Right" />
                                                                     <TextBlock Text=" — "
-                                                                               FontSize="12"
-                                                                               Foreground="DarkGray"
+                                                                               Style="{StaticResource MutedLabelStyle}"
                                                                                VerticalAlignment="Center" />
                                                                     <TextBlock Text="שינוי:"
-                                                                               FontSize="12"
-                                                                               Foreground="DarkGray"
+                                                                               Style="{StaticResource MutedLabelStyle}"
                                                                                VerticalAlignment="Center" />
                                                                     <TextBlock Text="{Binding FormattedSignedAmount}"
                                                                                FontSize="12"
+                                                                               Foreground="{Binding AmountAgoras, Converter={StaticResource SignedAmountToBrushConverter}}"
                                                                                VerticalAlignment="Center"
                                                                                Margin="2,0,0,0"
                                                                                FlowDirection="LeftToRight"
                                                                                MinWidth="70"
                                                                                TextAlignment="Right" />
                                                                     <TextBlock Text=" — "
-                                                                               FontSize="12"
-                                                                               Foreground="DarkGray"
+                                                                               Style="{StaticResource MutedLabelStyle}"
                                                                                VerticalAlignment="Center" />
                                                                     <TextBlock Text="אחרי:"
-                                                                               FontSize="12"
-                                                                               Foreground="DarkGray"
+                                                                               Style="{StaticResource MutedLabelStyle}"
                                                                                VerticalAlignment="Center" />
                                                                     <TextBlock Text="{Binding FormattedAfterBalance}"
-                                                                               FontSize="12"
-                                                                               Foreground="Gray"
+                                                                               Style="{StaticResource MutedLabelStyle}"
                                                                                VerticalAlignment="Center"
                                                                                Margin="2,0,0,0"
                                                                                FlowDirection="LeftToRight"
@@ -494,11 +641,12 @@
                                                                 <!-- Right side (fill): fund name + detail type -->
                                                                 <TextBlock VerticalAlignment="Center"
                                                                            FontSize="12"
+                                                                           Foreground="{StaticResource TextPrimaryBrush}"
                                                                            TextTrimming="CharacterEllipsis">
                                                                     <Run Text="{Binding FundName, Mode=OneWay}" />
-                                                                    <Run Text=" — " Foreground="DarkGray" />
+                                                                    <Run Text=" — " Foreground="{StaticResource TextMutedBrush}" />
                                                                     <Run Text="{Binding TransactionTypeLabel, Mode=OneWay}"
-                                                                         Foreground="DarkGray" />
+                                                                         Foreground="{StaticResource TextMutedBrush}" />
                                                                 </TextBlock>
                                                             </DockPanel>
                                                         </DataTemplate>

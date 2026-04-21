@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cmd /c \"dir /s /b C:\\\\Users\\\\sagig\\\\.nuget\\\\packages\\\\materialdesignthemes\\\\5.3.1\\\\\")",
+      "Bash(wc -l /c/Users/sagig/source/repos/VirtualFunds/desktop/VirtualFunds.Core/Supabase/*.cs)"
+    ]
+  }
+}

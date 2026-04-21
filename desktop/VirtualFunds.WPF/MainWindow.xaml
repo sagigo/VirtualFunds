@@ -3,59 +3,69 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         mc:Ignorable="d"
         Title="קרנות וירטואליות"
         Height="500" Width="700"
         WindowStartupLocation="CenterScreen"
-        FlowDirection="RightToLeft">
+        FlowDirection="RightToLeft"
+        Background="{StaticResource BackgroundBrush}"
+        TextElement.Foreground="{StaticResource TextPrimaryBrush}"
+        TextElement.FontFamily="{materialDesign:MaterialDesignFont}">
 
-    <DockPanel Margin="16">
+    <DockPanel>
 
-        <!-- Top: Header with title, sign-out, and create button -->
-        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
-            <Button Content="התנתק"
-                    Command="{Binding SignOutCommand}"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Center"
-                    Padding="12,4" />
-            <Button Content="+ תיק חדש"
-                    Command="{Binding CreatePortfolioCommand}"
-                    IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBooleanConverter}}"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Center"
-                    Padding="12,4"
-                    Margin="8,0,0,0" />
-            <TextBlock Text="בחירת תיק"
-                       FontSize="20"
-                       FontWeight="Bold"
-                       VerticalAlignment="Center" />
-        </DockPanel>
+        <!-- Purple header bar with title + action buttons -->
+        <Border DockPanel.Dock="Top" Style="{StaticResource HeaderBarStyle}">
+            <DockPanel>
+                <!-- Sign-out button (right side in RTL = visual left) -->
+                <Button Content="התנתק"
+                        Command="{Binding SignOutCommand}"
+                        Style="{StaticResource GhostWhiteButtonStyle}"
+                        VerticalAlignment="Center"
+                        DockPanel.Dock="Right" />
+
+                <!-- Create portfolio button -->
+                <Button Content="+ תיק חדש"
+                        Command="{Binding CreatePortfolioCommand}"
+                        IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBooleanConverter}}"
+                        Style="{StaticResource HeaderPrimaryButtonStyle}"
+                        VerticalAlignment="Center"
+                        DockPanel.Dock="Left" />
+
+                <!-- Title fills the center -->
+                <TextBlock Text="בחירת תיק"
+                           Style="{StaticResource HeaderTitleStyle}"
+                           HorizontalAlignment="Center" />
+            </DockPanel>
+        </Border>
 
         <!-- Error message -->
         <TextBlock DockPanel.Dock="Top"
                    Text="{Binding ErrorMessage}"
-                   Foreground="Red"
+                   Foreground="{StaticResource ErrorBrush}"
                    TextWrapping="Wrap"
-                   Margin="0,0,0,8"
+                   Margin="16,8,16,0"
                    Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibilityConverter}}" />
 
         <!-- Loading indicator -->
         <TextBlock DockPanel.Dock="Top"
                    Text="טוען..."
                    HorizontalAlignment="Center"
+                   Style="{StaticResource MutedLabelStyle}"
                    Margin="0,8,0,8"
                    Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
         <!-- Center: content area -->
-        <Grid>
+        <Grid Margin="16,12,16,16">
+
             <!-- Empty state message -->
             <TextBlock Text="עדיין לא יצרת תיקים. לחץ על '+ תיק חדש' כדי להתחיל."
                        HorizontalAlignment="Center"
                        VerticalAlignment="Center"
-                       FontSize="14"
-                       Foreground="Gray">
+                       FontSize="13">
                 <TextBlock.Style>
-                    <Style TargetType="TextBlock">
+                    <Style TargetType="TextBlock" BasedOn="{StaticResource MutedLabelStyle}">
                         <Setter Property="Visibility" Value="Collapsed" />
                         <Style.Triggers>
                             <MultiDataTrigger>
@@ -75,7 +85,9 @@
                      ItemsSource="{Binding Portfolios}"
                      SelectedItem="{Binding SelectedPortfolio}"
                      BorderThickness="0"
+                     Background="Transparent"
                      HorizontalContentAlignment="Stretch"
+                     ItemContainerStyle="{StaticResource CardListBoxItemStyle}"
                      MouseDoubleClick="PortfolioListBox_MouseDoubleClick">
                 <ListBox.Style>
                     <Style TargetType="ListBox">
@@ -89,9 +101,13 @@
                 </ListBox.Style>
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <DockPanel Margin="4,8">
-                            <!-- Right-click context menu -->
-                            <DockPanel.ContextMenu>
+                        <Border Margin="0,0,0,6"
+                                Background="{StaticResource SurfaceBrush}"
+                                BorderBrush="{StaticResource CardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                ClipToBounds="True">
+                            <Border.ContextMenu>
                                 <ContextMenu>
                                     <MenuItem Header="פתח"
                                               Command="{Binding DataContext.OpenPortfolioCommand,
@@ -107,24 +123,31 @@
                                                   Source={x:Reference PortfolioListBox}}"
                                               CommandParameter="{Binding}" />
                                 </ContextMenu>
-                            </DockPanel.ContextMenu>
+                            </Border.ContextMenu>
+                            <DockPanel>
+                                <!-- Accent bar: right = visual leading edge in RTL -->
+                                <Border DockPanel.Dock="Right"
+                                        Style="{StaticResource AccentBarStyle}" />
 
-                            <!-- Total balance (left side in RTL) -->
-                            <TextBlock DockPanel.Dock="Left"
-                                       Text="{Binding FormattedTotal}"
-                                       FontSize="14"
-                                       Foreground="Gray"
-                                       VerticalAlignment="Center"
-                                       FlowDirection="LeftToRight" />
+                                <!-- Item content with padding -->
+                                <DockPanel Margin="16,12,12,12">
+                                    <!-- Total balance (left side in RTL) -->
+                                    <TextBlock DockPanel.Dock="Left"
+                                               Text="{Binding FormattedTotal}"
+                                               Style="{StaticResource FundBalanceStyle}"
+                                               MinWidth="90"
+                                               TextAlignment="Right" />
 
-                            <!-- Portfolio name -->
-                            <TextBlock Text="{Binding Name}"
-                                       FontSize="15"
-                                       VerticalAlignment="Center" />
-                        </DockPanel>
+                                    <!-- Portfolio name fills remaining space -->
+                                    <TextBlock Text="{Binding Name}"
+                                               Style="{StaticResource FundNameStyle}" />
+                                </DockPanel>
+                            </DockPanel>
+                        </Border>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
+
         </Grid>
 
     </DockPanel>
