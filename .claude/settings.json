@@ -2,7 +2,32 @@
   "permissions": {
     "allow": [
       "Bash(cmd /c \"dir /s /b C:\\\\Users\\\\sagig\\\\.nuget\\\\packages\\\\materialdesignthemes\\\\5.3.1\\\\\")",
-      "Bash(wc -l /c/Users/sagig/source/repos/VirtualFunds/desktop/VirtualFunds.Core/Supabase/*.cs)"
+      "Bash(wc -l /c/Users/sagig/source/repos/VirtualFunds/desktop/VirtualFunds.Core/Supabase/*.cs)",
+      "Bash(./gradlew:*)",
+      "Bash(adb:*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "agent",
+            "prompt": "A Kotlin file was just written or edited. Hook input: $ARGUMENTS\n\nExtract tool_input.file_path from the JSON. Use the kotlin-code-reviewer subagent (subagent_type: 'kotlin-code-reviewer') to review that file. Report any convention violations found. If none, confirm it passed.",
+            "if": "Write(**/*.kt)|Edit(**/*.kt)",
+            "statusMessage": "Reviewing Kotlin file...",
+            "timeout": 120
+          },
+          {
+            "type": "agent",
+            "prompt": "A SQL file was just written or edited. Hook input: $ARGUMENTS\n\nExtract tool_input.file_path from the JSON. Use the db-reviewer subagent (subagent_type: 'db-reviewer') to review that file against the spec and for SQL quality. Report any issues found. If none, confirm it passed.",
+            "if": "Write(**/*.sql)|Edit(**/*.sql)",
+            "statusMessage": "Reviewing SQL file...",
+            "timeout": 120
+          }
+        ]
+      }
     ]
   }
 }
