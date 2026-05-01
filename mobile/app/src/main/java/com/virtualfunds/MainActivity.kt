@@ -12,7 +12,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.virtualfunds.ui.theme.VirtualFundsTheme
+import dagger.hilt.android.AndroidEntryPoint
 
+// @AndroidEntryPoint enables Hilt injection in this Activity.
+// It also enables hiltViewModel() in all Composables hosted within this Activity —
+// without it, Compose screens could not retrieve @HiltViewModel instances.
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

@@ -9,7 +9,10 @@
       "mcp__claude_ai_Supabase__execute_sql",
       "Bash(find C:Userssagig.nugetpackagesgotrue-csharp4.2.7 -name *.cs)",
       "Bash(find C:Userssagig.nugetpackagesgotrue-csharp4.2.7 -name *.xml)",
-      "Bash(dotnet build:*)"
+      "Bash(dotnet build:*)",
+      "Bash(JAVA_HOME=\"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\" ./gradlew assembleDebug)",
+      "Bash(JAVA_HOME=\"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\" ./gradlew :domain:test)",
+      "Bash(JAVA_HOME=\"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\" ./gradlew :domain:test --no-daemon)"
     ]
   }
 }
