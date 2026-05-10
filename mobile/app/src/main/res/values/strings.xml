@@ -1,3 +1,36 @@
 <resources>
     <string name="app_name">קרנות וירטואליות</string>
+
+    <!-- ========== Authentication (E3) ========== -->
+    <!-- Hebrew terms come from the spec's English-Hebrew Glossary (Appendix A) and match
+         the desktop's AuthViewModel error messages so users see the same wording on both
+         platforms. Reference: VirtualFundsRequirements.md Appendix A; desktop AuthViewModel.cs. -->
+
+    <!-- Screen titles / mode labels -->
+    <string name="auth_title_sign_in">התחברות</string>
+    <string name="auth_title_sign_up">הרשמה</string>
+
+    <!-- Field labels -->
+    <string name="auth_label_email">אימייל</string>
+    <string name="auth_label_password">סיסמה</string>
+
+    <!-- Buttons -->
+    <string name="auth_button_sign_in">התחברות</string>
+    <string name="auth_button_sign_up">הרשמה</string>
+    <string name="auth_button_sign_out">התנתקות</string>
+    <string name="auth_toggle_to_sign_up">אין לך חשבון? להרשמה</string>
+    <string name="auth_toggle_to_sign_in">כבר יש לך חשבון? להתחברות</string>
+
+    <!-- Errors — wording matches desktop AuthViewModel.cs -->
+    <string name="auth_error_empty_email">נא להזין כתובת דוא״ל.</string>
+    <string name="auth_error_invalid_email">כתובת הדוא״ל אינה תקינה.</string>
+    <string name="auth_error_empty_password">נא להזין סיסמה.</string>
+    <string name="auth_error_password_too_short">הסיסמה חייבת להכיל לפחות 6 תווים.</string>
+    <string name="auth_error_invalid_credentials">דוא״ל או סיסמה שגויים. נסה שוב.</string>
+    <string name="auth_error_registration_failed">ההרשמה נכשלה. ייתכן שהדוא״ל כבר רשום.</string>
+    <string name="auth_error_network">שגיאת רשת. בדוק את החיבור לאינטרנט.</string>
+    <string name="auth_error_unknown">אירעה שגיאה. נסה שוב מאוחר יותר.</string>
+
+    <!-- Home placeholder (until subsequent phases ship the real home screen) -->
+    <string name="home_placeholder_signed_in">מחובר/ת</string>
 </resources>

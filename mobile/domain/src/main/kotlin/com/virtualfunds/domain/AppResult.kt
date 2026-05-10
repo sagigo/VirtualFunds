@@ -53,6 +53,25 @@ sealed class AppError {
     /** ERR_UNAUTHORIZED — user is not authenticated or does not own the resource. */
     data object Unauthorized : AppError()
 
+    /**
+     * Authentication-specific errors (E3.4). Used by [com.virtualfunds.domain.auth.AuthRepository].
+     * These map to the desktop's typed exceptions (`AuthExceptions.cs`) so error UX is identical.
+     */
+    sealed class Auth : AppError() {
+        /** Email field was empty or whitespace-only. */
+        data object EmptyEmail : Auth()
+        /** Email field did not contain '@'. */
+        data object InvalidEmailFormat : Auth()
+        /** Password field was empty or whitespace-only. */
+        data object EmptyPassword : Auth()
+        /** Password is shorter than [com.virtualfunds.domain.auth.AuthValidator.MIN_PASSWORD_LENGTH]. */
+        data object PasswordTooShort : Auth()
+        /** Sign-in rejected by Supabase (wrong email or password). */
+        data object InvalidCredentials : Auth()
+        /** Sign-up rejected by Supabase (e.g. email already registered). */
+        data object RegistrationFailed : Auth()
+    }
+
     /** ERR_NOT_FOUND — requested entity does not exist. */
     data class NotFound(val entity: String = "") : AppError()
 

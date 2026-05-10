@@ -67,13 +67,18 @@ dependencies {
     // AndroidX
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    // lifecycle-viewmodel-compose: enables collectAsStateWithLifecycle() in Composables, which
+    // pauses StateFlow collection while the UI is in the background (saving battery + avoiding
+    // wasted work). Preferred over collectAsState() in any production Compose code.
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
 
     // Hilt — runtime library + KSP annotation processor.
     // ksp(...) runs the processor at compile time; it never ends up in the APK itself.
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     // hiltViewModel() helper that lets Compose screens obtain @HiltViewModels.
-    implementation(libs.hilt.navigation.compose)
+    implementation(libs.hilt.lifecycle.viewmodel.compose)
 
     // Navigation Compose — type-safe routes (mobile/CLAUDE.md §Navigation).
     implementation(libs.androidx.navigation.compose)

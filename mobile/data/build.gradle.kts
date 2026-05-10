@@ -73,6 +73,10 @@ dependencies {
     // Backed by Android Keystore. Note: this library is in maintenance mode; acceptable for v1.
     implementation(libs.androidx.security.crypto)
 
+    // kotlinx.serialization JSON — runtime needed to serialize UserSession (already @Serializable
+    // upstream in supabase-kt) for storage in EncryptedSharedPreferences.
+    implementation(libs.kotlinx.serialization.json)
+
     // Tests
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.espresso.core)

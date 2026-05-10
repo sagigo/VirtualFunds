@@ -13,12 +13,14 @@ jetbrainsKotlinJvm = "2.2.10"
 # https://github.com/google/ksp/releases — search for your exact Kotlin version prefix.
 ksp = "2.2.10-2.0.2"
 hilt = "2.59.2"
-hiltNavigationCompose = "1.3.0"
+hiltLifecycleViewmodelCompose = "1.3.0"
 supabase = "3.1.4"
 ktor = "3.1.2"
 kotlinxCoroutines = "1.10.2"
 navigationCompose = "2.9.8"
 securityCrypto = "1.1.0"
+kotlinxSerializationJson = "1.7.3"
+lifecycle = "2.10.0"
 kotest = "5.9.1"
 
 [libraries]
@@ -39,8 +41,10 @@ androidx-compose-material3 = { group = "androidx.compose.material3", name = "mat
 # Hilt — Google's compile-time DI framework for Android (built on Dagger).
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
-# hilt-navigation-compose lets Compose screens obtain @HiltViewModels via hiltViewModel().
-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
+# hilt-lifecycle-viewmodel-compose lets Compose screens obtain @HiltViewModels via hiltViewModel().
+# (As of androidx.hilt 1.3.0 the function moved here from the older hilt-navigation-compose
+# artifact, which is now deprecated for this purpose.)
+hilt-lifecycle-viewmodel-compose = { group = "androidx.hilt", name = "hilt-lifecycle-viewmodel-compose", version.ref = "hiltLifecycleViewmodelCompose" }
 # Supabase Kotlin SDK — uses a BOM so all sub-artifacts stay version-aligned.
 supabase-bom = { group = "io.github.jan-tennert.supabase", name = "bom", version.ref = "supabase" }
 supabase-postgrest = { group = "io.github.jan-tennert.supabase", name = "postgrest-kt" }
@@ -54,6 +58,13 @@ kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 # EncryptedSharedPreferences — stores the Supabase session token encrypted via Android Keystore.
 androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
+# kotlinx.serialization JSON — runtime serializer for UserSession (the type is already @Serializable
+# upstream in supabase-kt; we only need the Json runtime to encode/decode it).
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
+# lifecycle-viewmodel-compose — provides collectAsStateWithLifecycle() so Composables can collect
+# StateFlows in a lifecycle-aware way (stops collecting when the screen is in the background).
+androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycle" }
 # Kotest — test framework for :domain unit tests (behaviour-spec style, rich matchers).
 kotest-runner-junit5 = { group = "io.kotest", name = "kotest-runner-junit5", version.ref = "kotest" }
 kotest-assertions-core = { group = "io.kotest", name = "kotest-assertions-core", version.ref = "kotest" }

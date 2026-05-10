@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!--
+        INTERNET permission is required for any network access on Android.
+        Without it, every socket call throws SecurityException — OkHttp (used by supabase-kt)
+        crashes with "Permission denied (missing INTERNET permission?)".
+        This permission is considered "normal" (not dangerous), so Android grants it
+        automatically at install time — no runtime prompt is shown to the user.
+    -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:name=".VirtualFundsApplication"
         android:allowBackup="true"
