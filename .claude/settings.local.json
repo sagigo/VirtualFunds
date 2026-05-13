@@ -12,7 +12,11 @@
       "Bash(dotnet build:*)",
       "Bash(JAVA_HOME=\"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\" ./gradlew assembleDebug)",
       "Bash(JAVA_HOME=\"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\" ./gradlew :domain:test)",
-      "Bash(JAVA_HOME=\"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\" ./gradlew :domain:test --no-daemon)"
+      "Bash(JAVA_HOME=\"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\" ./gradlew :domain:test --no-daemon)",
+      "Bash(find ~ -path \"*supabase*postgrest*\" -name \"*.jar\" 2>/dev/null | head -5)",
+      "Read(//tmp/pg_check/**)",
+      "Bash(\"/c/Program Files/Android/Android Studio/jbr/bin/javap.exe\" -p io/github/jan/supabase/postgrest/result/PostgrestResult)",
+      "Bash(\"/c/Program Files/Android/Android Studio/jbr/bin/javap.exe\" -p io/github/jan/supabase/postgrest/exception/PostgrestRestException)"
     ]
   }
 }

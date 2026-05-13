@@ -80,4 +80,8 @@ hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 # KSP (Kotlin Symbol Processing) — Hilt's modern compile-time code generator.
 # Faster than the older KAPT approach and required for Kotlin 2.x.
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+# kotlin-serialization is the compiler plugin that turns @Serializable data classes into
+# generated KSerializer implementations at compile time. Required by supabase-kt's Postgrest
+# request bodies (RPC parameters, table inserts) and for our DTOs in :data.
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 

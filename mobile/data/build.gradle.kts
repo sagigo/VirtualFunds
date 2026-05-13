@@ -5,6 +5,9 @@ plugins {
     // hilt + ksp wire up compile-time DI code generation.
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+    // kotlin-serialization generates KSerializer<T> for every @Serializable class in this module.
+    // Required for our Postgrest DTOs (PortfolioDto, FundDto, ...) and RPC parameter classes.
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {

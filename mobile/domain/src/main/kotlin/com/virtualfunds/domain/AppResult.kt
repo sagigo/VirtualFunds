@@ -39,6 +39,16 @@ sealed class AppError {
         data object FundHasEnabledScheduledDeposit : Validation()
         /** ERR_VALIDATION:PORTFOLIO_TOTAL_IS_ZERO — revalue attempted on a zero-total portfolio. */
         data object PortfolioTotalIsZero : Validation()
+        /** ERR_VALIDATION:NEGATIVE_AMOUNT — amount must be > 0 (deposit/withdraw/transfer) or >= 0 (initial). */
+        data object NegativeAmount : Validation()
+        /** ERR_VALIDATION:INVALID_SCHEDULE_FIELDS — schedule fields don't match the schedule kind (E8.2). */
+        data object InvalidScheduleFields : Validation()
+        /** ERR_VALIDATION:INVALID_SCHEDULE_KIND — unsupported schedule kind value. */
+        data object InvalidScheduleKind : Validation()
+        /** Client-side: transfer source and destination are the same fund (E6.10). RPC never sees this. */
+        data object SameFundTransfer : Validation()
+        /** Client-side: revaluation would zero out a fund with a positive balance (E6.11 step 8b). */
+        data object RevalueWouldZeroFund : Validation()
         /** A validation token the client does not recognise — contains the raw token string. */
         data class Unknown(val token: String) : Validation()
     }
