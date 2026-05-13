@@ -45,7 +45,7 @@ data class AuthUiState(
  *
  * After successful sign-in/up, the SDK updates `auth.sessionStatus`, the [AuthRepository]
  * remaps to [com.virtualfunds.domain.auth.AuthState.SignedIn], and the **top-level**
- * `AppViewModel` swaps the UI from `AuthScreen` to `HomeScreen`. This ViewModel does NOT
+ * `AppViewModel` swaps the UI from `AuthScreen` to the portfolio list. This ViewModel does NOT
  * navigate — it just reports success/failure via [AuthUiState].
  */
 // @HiltViewModel + @Inject: Hilt generates a ViewModel factory that knows how to construct
@@ -95,7 +95,7 @@ class AuthViewModel @Inject constructor(
             when (result) {
                 is AppResult.Success -> {
                     // No screen-level navigation here — the top-level AppViewModel observes
-                    // authState and swaps to HomeScreen. We just stop the spinner.
+                    // authState and swaps to PortfolioListScreen. We just stop the spinner.
                     _state.update { it.copy(isLoading = false) }
                 }
                 is AppResult.Failure -> {

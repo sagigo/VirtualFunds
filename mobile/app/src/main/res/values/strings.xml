@@ -31,6 +31,44 @@
     <string name="auth_error_network">שגיאת רשת. בדוק את החיבור לאינטרנט.</string>
     <string name="auth_error_unknown">אירעה שגיאה. נסה שוב מאוחר יותר.</string>
 
-    <!-- Home placeholder (until subsequent phases ship the real home screen) -->
-    <string name="home_placeholder_signed_in">מחובר/ת</string>
+    <!-- ========== Portfolio list (E5.3–E5.5, PR-4) ========== -->
+    <!-- Wording mirrors desktop MainViewModel.cs / MainWindow.xaml so both platforms surface
+         identical strings. Reference: VirtualFundsRequirements.md E5.3-E5.5 and Appendix A. -->
+
+    <!-- Screen chrome -->
+    <string name="portfolio_list_title">בחירת תיק</string>
+    <string name="portfolio_list_loading">טוען…</string>
+    <string name="portfolio_list_empty">עדיין לא יצרת תיקים. לחץ על \'+ תיק חדש\' כדי להתחיל.</string>
+    <string name="portfolio_list_cd_actions">פעולות לתיק</string>
+    <string name="portfolio_list_error_load">שגיאה בטעינת התיקים. נסה שוב מאוחר יותר.</string>
+    <string name="portfolio_list_retry">נסה שוב</string>
+
+    <!-- Buttons / menu items -->
+    <string name="portfolio_action_create">+ תיק חדש</string>
+    <string name="portfolio_action_rename">שנה שם</string>
+    <string name="portfolio_action_delete">מחק</string>
+    <string name="portfolio_action_open">פתח</string>
+
+    <!-- Create / rename dialog -->
+    <string name="portfolio_dialog_create_title">תיק חדש</string>
+    <string name="portfolio_dialog_rename_title">שינוי שם תיק</string>
+    <string name="portfolio_dialog_name_label">שם התיק</string>
+    <string name="portfolio_dialog_ok">אישור</string>
+    <string name="portfolio_dialog_cancel">ביטול</string>
+
+    <!-- Delete confirmation dialog -->
+    <string name="portfolio_dialog_delete_title">מחיקת תיק</string>
+    <!-- %1$s is substituted with the portfolio name. -->
+    <string name="portfolio_dialog_delete_message">האם אתה בטוח שברצונך למחוק את התיק \"%1$s\"?</string>
+    <string name="portfolio_dialog_delete_confirm">מחק</string>
+
+    <!-- Mutation errors — wording mirrors desktop MainViewModel.cs. -->
+    <string name="portfolio_error_empty_name">נא להזין שם לתיק.</string>
+    <string name="portfolio_error_duplicate_name">כבר קיים תיק עם שם זה.</string>
+    <string name="portfolio_error_closed">לא ניתן לשנות שם של תיק סגור.</string>
+    <string name="portfolio_error_not_found">התיק לא נמצא.</string>
+    <string name="portfolio_error_already_closed">התיק כבר נמחק.</string>
+    <string name="portfolio_error_create_generic">שגיאה ביצירת התיק. נסה שוב מאוחר יותר.</string>
+    <string name="portfolio_error_rename_generic">שגיאה בשינוי שם התיק. נסה שוב מאוחר יותר.</string>
+    <string name="portfolio_error_delete_generic">שגיאה במחיקת התיק. נסה שוב מאוחר יותר.</string>
 </resources>

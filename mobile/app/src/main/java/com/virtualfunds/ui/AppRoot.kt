@@ -11,20 +11,20 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.virtualfunds.domain.auth.AuthState
 import com.virtualfunds.ui.auth.AuthScreen
-import com.virtualfunds.ui.home.HomeScreen
+import com.virtualfunds.ui.portfolio.PortfolioListScreen
 
 /**
  * The root of the app's Composable tree. Implements the auth state machine from E3.6:
  *
  *   AuthState.Unknown    → splash (we are still restoring the persisted session)
  *   AuthState.SignedOut  → AuthScreen (sign-in / sign-up)
- *   AuthState.SignedIn   → HomeScreen (placeholder for now — real home arrives in later phases)
+ *   AuthState.SignedIn   → PortfolioListScreen (PR-4, E5.3–E5.5)
  *
  * This is the mobile analogue of the desktop's `AuthWindow` / `MainWindow` switch — but
  * implemented as a `when` expression over a single source of truth ([AppViewModel.authState])
  * instead of as separate Window classes. Compose recomposes automatically when the state
- * changes, so sign-in transitions us to HomeScreen and sign-out transitions us back to
- * AuthScreen with no manual navigation.
+ * changes, so sign-in transitions us to the portfolio list and sign-out transitions us back
+ * to AuthScreen with no manual navigation.
  */
 @Composable
 fun AppRoot(
@@ -32,10 +32,10 @@ fun AppRoot(
 ) {
     val authState by appViewModel.authState.collectAsStateWithLifecycle()
 
-    when (val state = authState) {
-        AuthState.Unknown   -> SplashScreen()
-        AuthState.SignedOut -> AuthScreen()
-        is AuthState.SignedIn -> HomeScreen(userId = state.userId)
+    when (authState) {
+        AuthState.Unknown     -> SplashScreen()
+        AuthState.SignedOut   -> AuthScreen()
+        is AuthState.SignedIn -> PortfolioListScreen()
     }
 }
 
