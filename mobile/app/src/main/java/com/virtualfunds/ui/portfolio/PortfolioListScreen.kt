@@ -1,5 +1,6 @@
 package com.virtualfunds.ui.portfolio
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -65,6 +66,9 @@ import com.virtualfunds.ui.theme.VirtualFundsTheme
  */
 @Composable
 fun PortfolioListScreen(
+    // Navigation callback: invoked when the user taps a portfolio row. Hoisted to the screen
+    // so the ViewModel stays navigation-agnostic.
+    onOpenPortfolio: (PortfolioListItem) -> Unit = {},
     // hiltViewModel() reaches into Hilt's generated factory for @HiltViewModel-annotated
     // classes (see PortfolioListViewModel) and returns an instance tied to the nearest
     // ViewModelStoreOwner — here the host Activity, so the same instance is reused across
@@ -76,6 +80,7 @@ fun PortfolioListScreen(
     PortfolioListContent(
         state = state,
         onCreate = viewModel::onCreateClick,
+        onOpen = onOpenPortfolio,
         onRename = viewModel::onRenameClick,
         onDelete = viewModel::onDeleteClick,
         onDialogNameChange = viewModel::onDialogNameChange,
@@ -92,6 +97,7 @@ fun PortfolioListScreen(
 private fun PortfolioListContent(
     state: PortfolioListUiState,
     onCreate: () -> Unit,
+    onOpen: (PortfolioListItem) -> Unit,
     onRename: (PortfolioListItem) -> Unit,
     onDelete: (PortfolioListItem) -> Unit,
     onDialogNameChange: (String) -> Unit,
@@ -165,6 +171,7 @@ private fun PortfolioListContent(
                 else ->
                     PortfolioList(
                         portfolios = state.portfolios,
+                        onOpen = onOpen,
                         onRename = onRename,
                         onDelete = onDelete,
                         padding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
@@ -198,6 +205,7 @@ private fun PortfolioListContent(
 @Composable
 private fun PortfolioList(
     portfolios: List<PortfolioListItem>,
+    onOpen: (PortfolioListItem) -> Unit,
     onRename: (PortfolioListItem) -> Unit,
     onDelete: (PortfolioListItem) -> Unit,
     padding: PaddingValues,
@@ -213,6 +221,7 @@ private fun PortfolioList(
         items(portfolios, key = { it.portfolioId }) { portfolio ->
             PortfolioRow(
                 portfolio = portfolio,
+                onOpen = { onOpen(portfolio) },
                 onRename = { onRename(portfolio) },
                 onDelete = { onDelete(portfolio) },
             )
@@ -223,11 +232,17 @@ private fun PortfolioList(
 @Composable
 private fun PortfolioRow(
     portfolio: PortfolioListItem,
+    onOpen: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        // The card body is tappable to open the portfolio's fund list. The trailing overflow
+        // menu intercepts its own clicks so the row click does not fire when the user opens
+        // the rename/delete menu. Matches the desktop's double-click-to-open behaviour.
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onOpen),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface,
         ),
@@ -477,7 +492,7 @@ private fun PortfolioListPreview_Populated() {
                     PortfolioListItem("c", "טיולים", 0L),
                 ),
             ),
-            onCreate = {}, onRename = {}, onDelete = {},
+            onCreate = {}, onOpen = {}, onRename = {}, onDelete = {},
             onDialogNameChange = {}, onDialogConfirm = {}, onDialogDismiss = {},
             onConfirmDelete = {}, onSignOut = {}, onRetry = {},
         )
@@ -490,7 +505,7 @@ private fun PortfolioListPreview_Empty() {
     VirtualFundsTheme {
         PortfolioListContent(
             state = PortfolioListUiState(),
-            onCreate = {}, onRename = {}, onDelete = {},
+            onCreate = {}, onOpen = {}, onRename = {}, onDelete = {},
             onDialogNameChange = {}, onDialogConfirm = {}, onDialogDismiss = {},
             onConfirmDelete = {}, onSignOut = {}, onRetry = {},
         )
@@ -505,7 +520,7 @@ private fun PortfolioListPreview_LoadError() {
             state = PortfolioListUiState(
                 errorMessageRes = R.string.portfolio_list_error_load,
             ),
-            onCreate = {}, onRename = {}, onDelete = {},
+            onCreate = {}, onOpen = {}, onRename = {}, onDelete = {},
             onDialogNameChange = {}, onDialogConfirm = {}, onDialogDismiss = {},
             onConfirmDelete = {}, onSignOut = {}, onRetry = {},
         )
@@ -525,7 +540,7 @@ private fun PortfolioListPreview_RenameDialog() {
                     errorMessageRes = R.string.portfolio_error_duplicate_name,
                 ),
             ),
-            onCreate = {}, onRename = {}, onDelete = {},
+            onCreate = {}, onOpen = {}, onRename = {}, onDelete = {},
             onDialogNameChange = {}, onDialogConfirm = {}, onDialogDismiss = {},
             onConfirmDelete = {}, onSignOut = {}, onRetry = {},
         )

@@ -71,4 +71,69 @@
     <string name="portfolio_error_create_generic">שגיאה ביצירת התיק. נסה שוב מאוחר יותר.</string>
     <string name="portfolio_error_rename_generic">שגיאה בשינוי שם התיק. נסה שוב מאוחר יותר.</string>
     <string name="portfolio_error_delete_generic">שגיאה במחיקת התיק. נסה שוב מאוחר יותר.</string>
+
+    <!-- ========== Fund list (E5.6–E5.10, PR-5) ========== -->
+    <!-- Wording mirrors desktop PortfolioViewModel.cs / PortfolioWindow.xaml. -->
+
+    <!-- Screen chrome -->
+    <string name="fund_list_loading">טוען…</string>
+    <string name="fund_list_empty">עדיין לא יצרת קרנות. לחץ על \'+ קרן חדשה\' כדי להתחיל.</string>
+    <string name="fund_list_error_load">שגיאה בטעינת הקרנות. נסה שוב מאוחר יותר.</string>
+    <string name="fund_list_retry">נסה שוב</string>
+    <string name="fund_list_cd_back">חזרה</string>
+    <string name="fund_list_cd_actions">פעולות לקרן</string>
+    <string name="fund_list_cd_sort">סדר תצוגה</string>
+    <string name="fund_list_cd_move_up">העברה למעלה</string>
+    <string name="fund_list_cd_move_down">העברה למטה</string>
+
+    <!-- Header total label, e.g. "סך הכל: 1,234.56 ₪". %1$s is the formatted amount. -->
+    <string name="fund_list_total_label">סך הכל: %1$s</string>
+
+    <!-- Row format: allocation percentage with one decimal place, e.g. "12.3%". -->
+    <string name="fund_list_allocation_format">%1$.1f%%</string>
+
+    <!-- Buttons / menu items -->
+    <string name="fund_action_create">+ קרן חדשה</string>
+    <string name="fund_action_rename">שנה שם</string>
+    <string name="fund_action_delete">מחק</string>
+
+    <!-- Sort modes (E5.10) -->
+    <string name="fund_sort_created_date">תאריך יצירה</string>
+    <string name="fund_sort_name">שם</string>
+    <string name="fund_sort_balance">יתרה</string>
+    <string name="fund_sort_allocation">אחוז הקצאה</string>
+    <string name="fund_sort_custom">מותאם אישית</string>
+
+    <!-- Create dialog -->
+    <string name="fund_dialog_create_title">קרן חדשה</string>
+    <string name="fund_dialog_name_label">שם הקרן</string>
+    <string name="fund_dialog_initial_amount_label">סכום התחלתי ₪</string>
+    <string name="fund_dialog_initial_amount_hint">אופציונלי — ברירת מחדל: 0</string>
+
+    <!-- Rename dialog -->
+    <string name="fund_dialog_rename_title">שינוי שם קרן</string>
+
+    <!-- Delete confirmation dialog -->
+    <string name="fund_dialog_delete_title">מחיקת קרן</string>
+    <!-- %1$s is substituted with the fund name. -->
+    <string name="fund_dialog_delete_message">האם אתה בטוח שברצונך למחוק את הקרן \"%1$s\"?</string>
+    <string name="fund_dialog_delete_confirm">מחק</string>
+
+    <!-- Dialog common buttons -->
+    <string name="fund_dialog_ok">אישור</string>
+    <string name="fund_dialog_cancel">ביטול</string>
+
+    <!-- Inline validation / mutation errors (mirror desktop wording). -->
+    <string name="fund_error_empty_name">נא להזין שם לקרן.</string>
+    <string name="fund_error_duplicate_name">כבר קיימת קרן עם שם זה.</string>
+    <string name="fund_error_negative_amount">הסכום אינו יכול להיות שלילי.</string>
+    <string name="fund_error_invalid_number">נא להזין מספר חוקי.</string>
+    <string name="fund_error_too_many_decimals">ניתן להזין עד שתי ספרות אחרי הנקודה.</string>
+    <string name="fund_error_portfolio_closed">לא ניתן לבצע פעולה בתיק סגור.</string>
+    <string name="fund_error_not_found">הקרן לא נמצאה.</string>
+    <string name="fund_error_fund_not_empty">לא ניתן למחוק קרן שיתרתה אינה אפס.</string>
+    <string name="fund_error_fund_has_scheduled_deposit">לא ניתן למחוק קרן עם הפקדה מתוזמנת פעילה.</string>
+    <string name="fund_error_create_generic">שגיאה ביצירת הקרן. נסה שוב מאוחר יותר.</string>
+    <string name="fund_error_rename_generic">שגיאה בשינוי שם הקרן. נסה שוב מאוחר יותר.</string>
+    <string name="fund_error_delete_generic">שגיאה במחיקת הקרן. נסה שוב מאוחר יותר.</string>
 </resources>

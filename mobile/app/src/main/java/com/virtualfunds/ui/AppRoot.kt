@@ -9,8 +9,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.virtualfunds.domain.auth.AuthState
 import com.virtualfunds.ui.auth.AuthScreen
+import com.virtualfunds.ui.fund.FundListScreen
 import com.virtualfunds.ui.portfolio.PortfolioListScreen
 
 /**
@@ -18,13 +23,13 @@ import com.virtualfunds.ui.portfolio.PortfolioListScreen
  *
  *   AuthState.Unknown    → splash (we are still restoring the persisted session)
  *   AuthState.SignedOut  → AuthScreen (sign-in / sign-up)
- *   AuthState.SignedIn   → PortfolioListScreen (PR-4, E5.3–E5.5)
+ *   AuthState.SignedIn   → SignedInNavHost (NavHost rooted at the portfolio list)
  *
- * This is the mobile analogue of the desktop's `AuthWindow` / `MainWindow` switch — but
- * implemented as a `when` expression over a single source of truth ([AppViewModel.authState])
- * instead of as separate Window classes. Compose recomposes automatically when the state
- * changes, so sign-in transitions us to the portfolio list and sign-out transitions us back
- * to AuthScreen with no manual navigation.
+ * This is the mobile analogue of the desktop's `AuthWindow` / `MainWindow` / `PortfolioWindow`
+ * navigation. Compose recomposes automatically when the auth state changes, so sign-in
+ * transitions us to the portfolio list and sign-out returns to AuthScreen with no manual
+ * navigation calls. The inner NavHost is only created while signed in — its back stack is
+ * naturally discarded on sign-out.
  */
 @Composable
 fun AppRoot(
@@ -35,7 +40,47 @@ fun AppRoot(
     when (authState) {
         AuthState.Unknown     -> SplashScreen()
         AuthState.SignedOut   -> AuthScreen()
-        is AuthState.SignedIn -> PortfolioListScreen()
+        is AuthState.SignedIn -> SignedInNavHost()
+    }
+}
+
+/**
+ * The Navigation Compose host used while signed in (PR-5 wires the first inner destination).
+ *
+ * `rememberNavController()` creates the [NavController] tied to this composition. Navigation
+ * Compose 2.8+ takes typed routes — `composable<Routes.PortfolioList> { ... }` registers a
+ * destination identified by the `Routes.PortfolioList` data object; the route argument
+ * `Routes.FundList(...)` is reconstructed via `backStackEntry.toRoute<Routes.FundList>()`.
+ */
+@Composable
+private fun SignedInNavHost() {
+    val navController = rememberNavController()
+
+    NavHost(
+        navController = navController,
+        startDestination = Routes.PortfolioList,
+    ) {
+        composable<Routes.PortfolioList> {
+            PortfolioListScreen(
+                onOpenPortfolio = { portfolio ->
+                    navController.navigate(
+                        Routes.FundList(
+                            portfolioId = portfolio.portfolioId,
+                            portfolioName = portfolio.name,
+                        ),
+                    )
+                },
+            )
+        }
+
+        composable<Routes.FundList> { backStackEntry ->
+            val route: Routes.FundList = backStackEntry.toRoute()
+            FundListScreen(
+                portfolioId = route.portfolioId,
+                portfolioName = route.portfolioName,
+                onBack = { navController.popBackStack() },
+            )
+        }
     }
 }
 

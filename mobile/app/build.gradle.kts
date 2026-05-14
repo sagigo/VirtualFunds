@@ -7,6 +7,9 @@ plugins {
     alias(libs.plugins.hilt)
     // ksp is the code generator that Hilt uses to produce its DI factories at compile time.
     alias(libs.plugins.ksp)
+    // kotlin-serialization compiles @Serializable types — Navigation Compose 2.8+ uses these
+    // for type-safe routes (see `ui/Routes.kt`).
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -87,6 +90,10 @@ dependencies {
 
     // Navigation Compose — type-safe routes (mobile/CLAUDE.md §Navigation).
     implementation(libs.androidx.navigation.compose)
+
+    // kotlinx-serialization-json is the runtime that backs Navigation Compose's type-safe
+    // routes (the compiler plugin generates KSerializers for @Serializable route objects).
+    implementation(libs.kotlinx.serialization.json)
 
     // Coroutines for Android (adds the Main dispatcher tied to the Android main thread).
     implementation(libs.kotlinx.coroutines.android)
