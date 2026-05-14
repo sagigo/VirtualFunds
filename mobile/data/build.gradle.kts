@@ -43,6 +43,11 @@ android {
         // Required to generate the BuildConfig class with our custom fields above.
         buildConfig = true
     }
+    testOptions {
+        // Route local unit tests through the JUnit 5 platform so Kotest specs are discovered.
+        // Without this, Gradle defaults to JUnit 4 and no @Test methods / Kotest specs run.
+        unitTests.all { it.useJUnitPlatform() }
+    }
 }
 
 // kotlin { } is a Project-level extension (not android-scoped) — it must live outside android { }.
@@ -82,6 +87,9 @@ dependencies {
 
     // Tests
     testImplementation(libs.junit)
+    // Kotest — same test framework as :domain; requires JUnit 5 platform (configured below).
+    testImplementation(libs.kotest.runner.junit5)
+    testImplementation(libs.kotest.assertions.core)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
 }

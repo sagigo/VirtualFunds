@@ -43,6 +43,10 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        // Route local unit tests through JUnit 5 so Kotest specs are discovered.
+        unitTests.all { it.useJUnitPlatform() }
+    }
 }
 
 // kotlin { } is a Project-level extension (not android-scoped) — it must live outside android { }.
@@ -89,6 +93,15 @@ dependencies {
 
     // Tests
     testImplementation(libs.junit)
+    // Kotest — same framework as :domain.
+    testImplementation(libs.kotest.runner.junit5)
+    testImplementation(libs.kotest.assertions.core)
+    // MockK — mocking library for Kotlin; needed for ViewModel tests (mocks repositories,
+    // SyncCoordinator). Handles final classes and suspend functions natively.
+    testImplementation(libs.mockk)
+    // coroutines-test — provides runTest, UnconfinedTestDispatcher, Dispatchers.setMain.
+    // Essential for testing ViewModels that use viewModelScope.
+    testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

@@ -22,6 +22,9 @@ securityCrypto = "1.1.0"
 kotlinxSerializationJson = "1.7.3"
 lifecycle = "2.10.0"
 kotest = "5.9.1"
+mockk = "1.14.2"
+# kotlinx-coroutines-test: runTest, TestDispatcher, advanceUntilIdle — same version as coroutines.
+kotlinxCoroutinesTest = "1.10.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -71,6 +74,11 @@ androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lif
 # Kotest — test framework for :domain unit tests (behaviour-spec style, rich matchers).
 kotest-runner-junit5 = { group = "io.kotest", name = "kotest-runner-junit5", version.ref = "kotest" }
 kotest-assertions-core = { group = "io.kotest", name = "kotest-assertions-core", version.ref = "kotest" }
+# MockK — mocking library for Kotlin. Handles final classes, suspend functions, and objects
+# without requiring open/abstract declarations (unlike Mockito).
+mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
+# kotlinx-coroutines-test — runTest, UnconfinedTestDispatcher, TestScope for ViewModel tests.
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutinesTest" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
