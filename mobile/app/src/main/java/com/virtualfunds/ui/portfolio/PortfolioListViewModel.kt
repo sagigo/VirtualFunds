@@ -99,15 +99,21 @@ class PortfolioListViewModel @Inject constructor(
         refresh()
 
         // React to sync events so the list refreshes when the app resumes / starts.
-        // PostMutation events are not relevant here (we already reload right after our own
-        // mutations) but reloading on them too is harmless and keeps multi-VM coherence
-        // simple. The coroutine is bound to viewModelScope, so it dies with the VM.
+        //
+        // PostMutation matters here too: while the user is on the fund screen for one
+        // portfolio, this VM stays alive in the Navigation back-stack (Compose's NavHost
+        // keeps prior entries' ViewModels around). Deposit/withdraw/transfer fire
+        // PostMutation events that change that portfolio's *total balance* — which is
+        // displayed on this screen. Without a refresh, the user sees a stale total when
+        // they back out. The refresh is cheap (one Postgrest read) and harmless if we're
+        // not actually visible. The coroutine is bound to viewModelScope, so it dies with
+        // the VM.
         viewModelScope.launch {
             syncCoordinator.events.collect { event ->
                 when (event) {
                     is SyncTrigger.AppStart,
-                    is SyncTrigger.AppResume -> refresh()
-                    is SyncTrigger.PostMutation -> { /* no-op for now */ }
+                    is SyncTrigger.AppResume,
+                    is SyncTrigger.PostMutation -> refresh()
                 }
             }
         }

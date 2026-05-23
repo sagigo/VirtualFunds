@@ -373,15 +373,42 @@ class PortfolioListViewModelTest : FunSpec() {
             vm.state.value.portfolios shouldBe samplePortfolios
         }
 
-        test("PostMutation sync event does not trigger an extra refresh") {
-            // PostMutation is not handled by the portfolio list ViewModel (per implementation).
+        test("PostMutation sync event triggers a refresh so portfolio totals stay fresh") {
+            // While the user is on the fund-list screen this VM stays alive in the nav
+            // back-stack. Fund operations (deposit/withdraw/transfer) fire PostMutation;
+            // those change portfolio totals, so this VM must refresh.
             coEvery { portfolioRepo.getActivePortfolios() } returns AppResult.Success(samplePortfolios)
             val vm = buildVm()
 
             syncEvents.emit(SyncTrigger.PostMutation("p1"))
 
-            // Only the initial load should have fired — exactly 1 call total.
-            coVerify(exactly = 1) { portfolioRepo.getActivePortfolios() }
+            // Initial load + refresh on PostMutation = 2 calls.
+            coVerify(exactly = 2) { portfolioRepo.getActivePortfolios() }
+        }
+
+        test("PostMutation refresh updates the visible totals") {
+            // Simulate the data layer returning a higher total after the mutation, so we
+            // can verify the VM picks up the new value when it refreshes.
+            val before = samplePortfolios
+            val after = samplePortfolios.map { p ->
+                if (p.portfolioId == "p1") p.copy(totalBalanceAgoras = p.totalBalanceAgoras + 100_000L)
+                else p
+            }
+            coEvery { portfolioRepo.getActivePortfolios() } returnsMany listOf(
+                AppResult.Success(before),
+                AppResult.Success(after),
+            )
+            val vm = buildVm()
+
+            // Before: initial load.
+            vm.state.value.portfolios.first { it.portfolioId == "p1" }.totalBalanceAgoras shouldBe
+                before.first { it.portfolioId == "p1" }.totalBalanceAgoras
+
+            syncEvents.emit(SyncTrigger.PostMutation("p1"))
+
+            // After: refreshed total.
+            vm.state.value.portfolios.first { it.portfolioId == "p1" }.totalBalanceAgoras shouldBe
+                after.first { it.portfolioId == "p1" }.totalBalanceAgoras
         }
     }
 
