@@ -28,7 +28,11 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -92,8 +96,12 @@ fun FundListScreen(
         onSelectFund = viewModel::onSelectFund,
         onRename = viewModel::onRenameClick,
         onDelete = viewModel::onDeleteClick,
+        onDeposit = viewModel::onDepositClick,
+        onWithdraw = viewModel::onWithdrawClick,
+        onTransfer = viewModel::onTransferClick,
         onDialogNameChange = viewModel::onDialogNameChange,
         onDialogAmountChange = viewModel::onDialogAmountChange,
+        onDialogTransferDestinationChange = viewModel::onTransferDestinationChange,
         onDialogConfirm = viewModel::onDialogConfirm,
         onDialogDismiss = viewModel::onDialogDismiss,
         onConfirmDelete = viewModel::onConfirmDelete,
@@ -113,8 +121,12 @@ private fun FundListContent(
     onSelectFund: (String?) -> Unit,
     onRename: (FundListItem) -> Unit,
     onDelete: (FundListItem) -> Unit,
+    onDeposit: (FundListItem) -> Unit,
+    onWithdraw: (FundListItem) -> Unit,
+    onTransfer: (FundListItem) -> Unit,
     onDialogNameChange: (String) -> Unit,
     onDialogAmountChange: (String) -> Unit,
+    onDialogTransferDestinationChange: (String) -> Unit,
     onDialogConfirm: () -> Unit,
     onDialogDismiss: () -> Unit,
     onConfirmDelete: () -> Unit,
@@ -200,6 +212,9 @@ private fun FundListContent(
                         onSelectFund = onSelectFund,
                         onRename = onRename,
                         onDelete = onDelete,
+                        onDeposit = onDeposit,
+                        onWithdraw = onWithdraw,
+                        onTransfer = onTransfer,
                         onMoveUp = onMoveUp,
                         onMoveDown = onMoveDown,
                         padding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
@@ -225,6 +240,30 @@ private fun FundListContent(
         is FundDialog.ConfirmDelete -> DeleteFundDialog(
             dialog = dlg,
             onConfirm = onConfirmDelete,
+            onDismiss = onDialogDismiss,
+        )
+        is FundDialog.DepositInput -> DepositFundDialog(
+            dialog = dlg,
+            onAmountChange = onDialogAmountChange,
+            onConfirm = onDialogConfirm,
+            onDismiss = onDialogDismiss,
+        )
+        is FundDialog.WithdrawInput -> WithdrawFundDialog(
+            dialog = dlg,
+            onAmountChange = onDialogAmountChange,
+            onConfirm = onDialogConfirm,
+            onDismiss = onDialogDismiss,
+        )
+        is FundDialog.TransferInput -> TransferFundDialog(
+            dialog = dlg,
+            onAmountChange = onDialogAmountChange,
+            onDestinationChange = onDialogTransferDestinationChange,
+            onConfirm = onDialogConfirm,
+            onDismiss = onDialogDismiss,
+        )
+        is FundDialog.ConfirmOperation -> ConfirmOperationDialog(
+            dialog = dlg,
+            onConfirm = onDialogConfirm,
             onDismiss = onDialogDismiss,
         )
         FundDialog.None -> { /* nothing to render */ }
@@ -296,6 +335,9 @@ private fun FundList(
     onSelectFund: (String?) -> Unit,
     onRename: (FundListItem) -> Unit,
     onDelete: (FundListItem) -> Unit,
+    onDeposit: (FundListItem) -> Unit,
+    onWithdraw: (FundListItem) -> Unit,
+    onTransfer: (FundListItem) -> Unit,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
     padding: PaddingValues,
@@ -323,6 +365,9 @@ private fun FundList(
                 },
                 onRename = { onRename(fund) },
                 onDelete = { onDelete(fund) },
+                onDeposit = { onDeposit(fund) },
+                onWithdraw = { onWithdraw(fund) },
+                onTransfer = { onTransfer(fund) },
                 onMoveUp = onMoveUp,
                 onMoveDown = onMoveDown,
             )
@@ -340,6 +385,9 @@ private fun FundRow(
     onClick: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
+    onDeposit: () -> Unit,
+    onWithdraw: () -> Unit,
+    onTransfer: () -> Unit,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
 ) {
@@ -408,7 +456,13 @@ private fun FundRow(
                 }
             }
 
-            FundRowMenu(onRename = onRename, onDelete = onDelete)
+            FundRowMenu(
+                onRename = onRename,
+                onDelete = onDelete,
+                onDeposit = onDeposit,
+                onWithdraw = onWithdraw,
+                onTransfer = onTransfer,
+            )
         }
     }
 }
@@ -417,6 +471,9 @@ private fun FundRow(
 private fun FundRowMenu(
     onRename: () -> Unit,
     onDelete: () -> Unit,
+    onDeposit: () -> Unit,
+    onWithdraw: () -> Unit,
+    onTransfer: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -431,6 +488,30 @@ private fun FundRowMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
         ) {
+            // Money operations come first — they're the common case (E6.8–E6.10).
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.fund_action_deposit)) },
+                onClick = {
+                    expanded = false
+                    onDeposit()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.fund_action_withdraw)) },
+                onClick = {
+                    expanded = false
+                    onWithdraw()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.fund_action_transfer)) },
+                onClick = {
+                    expanded = false
+                    onTransfer()
+                },
+            )
+            HorizontalDivider()
+            // Structural actions at the bottom, separated by a divider.
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.fund_action_rename)) },
                 onClick = {
@@ -657,6 +738,273 @@ private fun DeleteFundDialog(
     )
 }
 
+/**
+ * Deposit/Withdraw share the same shape: a read-only fund-name line + a positive-shekel
+ * amount field. We render them with one private composable so the two dialogs can't drift.
+ *
+ * `titleRes`/`errorAreaShown`/etc. are passed in so each call site can supply its own title
+ * and submitting-state without duplicating layout.
+ */
+@Composable
+private fun AmountOnlyDialog(
+    titleRes: Int,
+    fundName: String,
+    amountText: String,
+    isSubmitting: Boolean,
+    errorMessageRes: Int,
+    onAmountChange: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(titleRes)) },
+        text = {
+            Column {
+                Text(
+                    text = stringResource(R.string.fund_dialog_fund_label, fundName),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Spacer(Modifier.height(12.dp))
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                    OutlinedTextField(
+                        value = amountText,
+                        onValueChange = onAmountChange,
+                        label = { Text(stringResource(R.string.fund_dialog_amount_label)) },
+                        supportingText = {
+                            Text(stringResource(R.string.fund_dialog_amount_hint))
+                        },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        enabled = !isSubmitting,
+                        isError = errorMessageRes != 0,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                if (errorMessageRes != 0) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(errorMessageRes),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = !isSubmitting) {
+                if (isSubmitting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.height(18.dp),
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Text(stringResource(R.string.fund_dialog_ok))
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isSubmitting) {
+                Text(stringResource(R.string.fund_dialog_cancel))
+            }
+        },
+    )
+}
+
+@Composable
+private fun DepositFundDialog(
+    dialog: FundDialog.DepositInput,
+    onAmountChange: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) = AmountOnlyDialog(
+    titleRes = R.string.fund_dialog_deposit_title,
+    fundName = dialog.target.name,
+    amountText = dialog.amountText,
+    isSubmitting = dialog.isSubmitting,
+    errorMessageRes = dialog.errorMessageRes,
+    onAmountChange = onAmountChange,
+    onConfirm = onConfirm,
+    onDismiss = onDismiss,
+)
+
+@Composable
+private fun WithdrawFundDialog(
+    dialog: FundDialog.WithdrawInput,
+    onAmountChange: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) = AmountOnlyDialog(
+    titleRes = R.string.fund_dialog_withdraw_title,
+    fundName = dialog.target.name,
+    amountText = dialog.amountText,
+    isSubmitting = dialog.isSubmitting,
+    errorMessageRes = dialog.errorMessageRes,
+    onAmountChange = onAmountChange,
+    onConfirm = onConfirm,
+    onDismiss = onDismiss,
+)
+
+/**
+ * Transfer dialog (E6.10). Shows source (read-only), a destination picker
+ * (`ExposedDropdownMenuBox` — Material 3's combo-box equivalent), and an amount field.
+ *
+ * The dropdown lists [FundDialog.TransferInput.candidates] which the VM populated when
+ * the dialog was opened. We don't refresh it during typing, so a near-simultaneous list
+ * refresh won't reset the selection mid-edit.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TransferFundDialog(
+    dialog: FundDialog.TransferInput,
+    onAmountChange: (String) -> Unit,
+    onDestinationChange: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selectedDestination = dialog.candidates.firstOrNull { it.fundId == dialog.destinationFundId }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.fund_dialog_transfer_title)) },
+        text = {
+            Column {
+                Text(
+                    text = stringResource(R.string.fund_dialog_transfer_source_label, dialog.source.name),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Spacer(Modifier.height(12.dp))
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { if (!dialog.isSubmitting) expanded = it },
+                ) {
+                    OutlinedTextField(
+                        value = selectedDestination?.name
+                            ?: stringResource(R.string.fund_dialog_transfer_destination_placeholder),
+                        onValueChange = { /* read-only — selection only via dropdown */ },
+                        readOnly = true,
+                        label = { Text(stringResource(R.string.fund_dialog_transfer_destination_label)) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        enabled = !dialog.isSubmitting,
+                        isError = dialog.errorMessageRes != 0,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            // PrimaryEditable mismatches readOnly fields; PrimaryNotEditable is correct.
+                            .menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = !dialog.isSubmitting),
+                    )
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                    ) {
+                        dialog.candidates.forEach { candidate ->
+                            DropdownMenuItem(
+                                text = { Text(candidate.name) },
+                                onClick = {
+                                    expanded = false
+                                    onDestinationChange(candidate.fundId)
+                                },
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                    OutlinedTextField(
+                        value = dialog.amountText,
+                        onValueChange = onAmountChange,
+                        label = { Text(stringResource(R.string.fund_dialog_amount_label)) },
+                        supportingText = {
+                            Text(stringResource(R.string.fund_dialog_amount_hint))
+                        },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        enabled = !dialog.isSubmitting,
+                        isError = dialog.errorMessageRes != 0,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                if (dialog.errorMessageRes != 0) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(dialog.errorMessageRes),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = !dialog.isSubmitting) {
+                if (dialog.isSubmitting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.height(18.dp),
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Text(stringResource(R.string.fund_dialog_ok))
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !dialog.isSubmitting) {
+                Text(stringResource(R.string.fund_dialog_cancel))
+            }
+        },
+    )
+}
+
+/**
+ * Final yes/no confirmation step matching desktop's `ConfirmationRequested` pattern.
+ * Shows the formatted amount + target fund(s) so the user can verify before committing.
+ * Cancel → close (back to underlying list). Confirm → fire the repo via [onConfirm].
+ */
+@Composable
+private fun ConfirmOperationDialog(
+    dialog: FundDialog.ConfirmOperation,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val amountFormatted = formatAgoras(dialog.amountAgoras)
+    val message = when (dialog.kind) {
+        FundDialog.ConfirmOperation.Kind.Deposit ->
+            stringResource(R.string.fund_dialog_confirm_deposit, amountFormatted, dialog.sourceFund.name)
+        FundDialog.ConfirmOperation.Kind.Withdraw ->
+            stringResource(R.string.fund_dialog_confirm_withdraw, amountFormatted, dialog.sourceFund.name)
+        FundDialog.ConfirmOperation.Kind.Transfer ->
+            stringResource(
+                R.string.fund_dialog_confirm_transfer,
+                amountFormatted,
+                dialog.sourceFund.name,
+                // ! safe: TransferKind always carries a destinationFund (constructed by VM).
+                dialog.destinationFund!!.name,
+            )
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.fund_dialog_confirm_title)) },
+        text = { Text(message) },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = !dialog.isSubmitting) {
+                if (dialog.isSubmitting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.height(18.dp),
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Text(stringResource(R.string.fund_dialog_confirm_button))
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !dialog.isSubmitting) {
+                Text(stringResource(R.string.fund_dialog_cancel))
+            }
+        },
+    )
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Previews
 // ──────────────────────────────────────────────────────────────────────────────
@@ -696,7 +1044,9 @@ private fun FundListPreview_Populated() {
                 totalAgoras = 1_000_000L,
             ),
             onBack = {}, onCreate = {}, onSelectFund = {}, onRename = {}, onDelete = {},
+            onDeposit = {}, onWithdraw = {}, onTransfer = {},
             onDialogNameChange = {}, onDialogAmountChange = {},
+            onDialogTransferDestinationChange = {},
             onDialogConfirm = {}, onDialogDismiss = {}, onConfirmDelete = {},
             onRetry = {}, onSortModeChange = {}, onMoveUp = {}, onMoveDown = {},
         )
@@ -710,7 +1060,9 @@ private fun FundListPreview_Empty() {
         FundListContent(
             state = FundListUiState(portfolioName = "תיק ריק"),
             onBack = {}, onCreate = {}, onSelectFund = {}, onRename = {}, onDelete = {},
+            onDeposit = {}, onWithdraw = {}, onTransfer = {},
             onDialogNameChange = {}, onDialogAmountChange = {},
+            onDialogTransferDestinationChange = {},
             onDialogConfirm = {}, onDialogDismiss = {}, onConfirmDelete = {},
             onRetry = {}, onSortModeChange = {}, onMoveUp = {}, onMoveDown = {},
         )
@@ -730,7 +1082,9 @@ private fun FundListPreview_CustomMode() {
                 selectedFundId = "f2",
             ),
             onBack = {}, onCreate = {}, onSelectFund = {}, onRename = {}, onDelete = {},
+            onDeposit = {}, onWithdraw = {}, onTransfer = {},
             onDialogNameChange = {}, onDialogAmountChange = {},
+            onDialogTransferDestinationChange = {},
             onDialogConfirm = {}, onDialogDismiss = {}, onConfirmDelete = {},
             onRetry = {}, onSortModeChange = {}, onMoveUp = {}, onMoveDown = {},
         )
@@ -749,7 +1103,56 @@ private fun FundListPreview_CreateDialog() {
                 dialog = FundDialog.CreateInput(name = "מניות נוספות", amountText = "1500.50"),
             ),
             onBack = {}, onCreate = {}, onSelectFund = {}, onRename = {}, onDelete = {},
+            onDeposit = {}, onWithdraw = {}, onTransfer = {},
             onDialogNameChange = {}, onDialogAmountChange = {},
+            onDialogTransferDestinationChange = {},
+            onDialogConfirm = {}, onDialogDismiss = {}, onConfirmDelete = {},
+            onRetry = {}, onSortModeChange = {}, onMoveUp = {}, onMoveDown = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, locale = "he")
+@Composable
+private fun FundListPreview_DepositDialog() {
+    VirtualFundsTheme {
+        FundListContent(
+            state = FundListUiState(
+                portfolioName = "פנסיה",
+                funds = sampleFunds,
+                totalAgoras = 1_000_000L,
+                dialog = FundDialog.DepositInput(target = sampleFunds[0], amountText = "250.00"),
+            ),
+            onBack = {}, onCreate = {}, onSelectFund = {}, onRename = {}, onDelete = {},
+            onDeposit = {}, onWithdraw = {}, onTransfer = {},
+            onDialogNameChange = {}, onDialogAmountChange = {},
+            onDialogTransferDestinationChange = {},
+            onDialogConfirm = {}, onDialogDismiss = {}, onConfirmDelete = {},
+            onRetry = {}, onSortModeChange = {}, onMoveUp = {}, onMoveDown = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, locale = "he")
+@Composable
+private fun FundListPreview_TransferDialog() {
+    VirtualFundsTheme {
+        FundListContent(
+            state = FundListUiState(
+                portfolioName = "פנסיה",
+                funds = sampleFunds,
+                totalAgoras = 1_000_000L,
+                dialog = FundDialog.TransferInput(
+                    source = sampleFunds[0],
+                    candidates = sampleFunds.drop(1),
+                    destinationFundId = sampleFunds[1].fundId,
+                    amountText = "1000.00",
+                ),
+            ),
+            onBack = {}, onCreate = {}, onSelectFund = {}, onRename = {}, onDelete = {},
+            onDeposit = {}, onWithdraw = {}, onTransfer = {},
+            onDialogNameChange = {}, onDialogAmountChange = {},
+            onDialogTransferDestinationChange = {},
             onDialogConfirm = {}, onDialogDismiss = {}, onConfirmDelete = {},
             onRetry = {}, onSortModeChange = {}, onMoveUp = {}, onMoveDown = {},
         )

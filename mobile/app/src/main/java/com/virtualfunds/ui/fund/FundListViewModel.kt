@@ -76,6 +76,66 @@ sealed class FundDialog {
         val target: FundListItem,
         val isSubmitting: Boolean = false,
     ) : FundDialog()
+
+    /**
+     * Dialog for depositing money into a single fund (E6.8).
+     *
+     * [target] is the fund receiving the deposit; [amountText] is the raw LTR shekel string
+     * the user typed. Parsed on confirm by [parseShekelInput]. Anything other than a positive
+     * [ShekelParseResult.Success] populates [errorMessageRes] (zero/empty is rejected because
+     * E6.8 requires `amount_agoras > 0`).
+     */
+    data class DepositInput(
+        val target: FundListItem,
+        val amountText: String = "",
+        val isSubmitting: Boolean = false,
+        val errorMessageRes: Int = 0,
+    ) : FundDialog()
+
+    /** Dialog for withdrawing money from a single fund (E6.9). Same shape as [DepositInput]. */
+    data class WithdrawInput(
+        val target: FundListItem,
+        val amountText: String = "",
+        val isSubmitting: Boolean = false,
+        val errorMessageRes: Int = 0,
+    ) : FundDialog()
+
+    /**
+     * Confirmation step after the user has typed an amount and tapped OK on a Deposit /
+     * Withdraw / Transfer dialog. Mirrors the desktop's `ConfirmationRequested` event in
+     * `PortfolioViewModel.DepositAsync/WithdrawAsync/TransferAsync` (each calls the service
+     * only after a separate yes/no confirmation prompt).
+     *
+     * The amount is already parsed and validated (`amountAgoras > 0`) by the time we get
+     * here — the user is confirming the *committed* values they're about to send.
+     */
+    data class ConfirmOperation(
+        val kind: Kind,
+        val sourceFund: FundListItem,
+        /** Non-null only for transfers. */
+        val destinationFund: FundListItem?,
+        val amountAgoras: Long,
+        val isSubmitting: Boolean = false,
+    ) : FundDialog() {
+        enum class Kind { Deposit, Withdraw, Transfer }
+    }
+
+    /**
+     * Dialog for transferring money between two funds in the same portfolio (E6.10).
+     *
+     * [source] is fixed when the dialog opens (it's the fund whose ⋮ menu was tapped).
+     * [candidates] is the list of valid destinations — all other funds in the portfolio,
+     * captured at dialog-open time so a later refresh doesn't replace the list mid-edit.
+     * [destinationFundId] starts `null`; the user must pick one before confirming.
+     */
+    data class TransferInput(
+        val source: FundListItem,
+        val candidates: List<FundListItem>,
+        val destinationFundId: String? = null,
+        val amountText: String = "",
+        val isSubmitting: Boolean = false,
+        val errorMessageRes: Int = 0,
+    ) : FundDialog()
 }
 
 /**
@@ -205,6 +265,35 @@ class FundListViewModel @Inject constructor(
         _state.update { it.copy(dialog = FundDialog.ConfirmDelete(target = fund)) }
     }
 
+    /** Open the deposit dialog targeting [fund] (E6.8). */
+    fun onDepositClick(fund: FundListItem) {
+        _state.update { it.copy(dialog = FundDialog.DepositInput(target = fund), errorMessageRes = 0) }
+    }
+
+    /** Open the withdraw dialog targeting [fund] (E6.9). */
+    fun onWithdrawClick(fund: FundListItem) {
+        _state.update { it.copy(dialog = FundDialog.WithdrawInput(target = fund), errorMessageRes = 0) }
+    }
+
+    /**
+     * Open the transfer dialog with [fund] as the source (E6.10). If the portfolio has fewer
+     * than two funds, surface a screen-level error instead of opening an unusable dialog —
+     * mirrors desktop wording "נדרשות לפחות שתי קרנות לביצוע העברה.".
+     */
+    fun onTransferClick(fund: FundListItem) {
+        val others = _state.value.funds.filter { it.fundId != fund.fundId }
+        if (others.isEmpty()) {
+            _state.update { it.copy(errorMessageRes = R.string.fund_error_transfer_needs_two_funds) }
+            return
+        }
+        _state.update {
+            it.copy(
+                dialog = FundDialog.TransferInput(source = fund, candidates = others),
+                errorMessageRes = 0,
+            )
+        }
+    }
+
     /** Single text-change handler that updates whichever dialog field corresponds to [field]. */
     fun onDialogNameChange(value: String) {
         _state.update { state ->
@@ -220,18 +309,35 @@ class FundListViewModel @Inject constructor(
 
     fun onDialogAmountChange(value: String) {
         _state.update { state ->
-            val dlg = state.dialog as? FundDialog.CreateInput ?: return@update state
-            state.copy(dialog = dlg.copy(amountText = value, errorMessageRes = 0))
+            when (val dlg = state.dialog) {
+                is FundDialog.CreateInput   -> state.copy(dialog = dlg.copy(amountText = value, errorMessageRes = 0))
+                is FundDialog.DepositInput  -> state.copy(dialog = dlg.copy(amountText = value, errorMessageRes = 0))
+                is FundDialog.WithdrawInput -> state.copy(dialog = dlg.copy(amountText = value, errorMessageRes = 0))
+                is FundDialog.TransferInput -> state.copy(dialog = dlg.copy(amountText = value, errorMessageRes = 0))
+                else -> state
+            }
+        }
+    }
+
+    /** Transfer-specific: pick the destination fund from the dropdown. */
+    fun onTransferDestinationChange(destinationFundId: String) {
+        _state.update { state ->
+            val dlg = state.dialog as? FundDialog.TransferInput ?: return@update state
+            state.copy(dialog = dlg.copy(destinationFundId = destinationFundId, errorMessageRes = 0))
         }
     }
 
     fun onDialogDismiss() {
         val current = _state.value.dialog
         val busy = when (current) {
-            is FundDialog.CreateInput   -> current.isSubmitting
-            is FundDialog.RenameInput   -> current.isSubmitting
-            is FundDialog.ConfirmDelete -> current.isSubmitting
-            FundDialog.None             -> false
+            is FundDialog.CreateInput      -> current.isSubmitting
+            is FundDialog.RenameInput      -> current.isSubmitting
+            is FundDialog.ConfirmDelete    -> current.isSubmitting
+            is FundDialog.DepositInput     -> current.isSubmitting
+            is FundDialog.WithdrawInput    -> current.isSubmitting
+            is FundDialog.TransferInput    -> current.isSubmitting
+            is FundDialog.ConfirmOperation -> current.isSubmitting
+            FundDialog.None                -> false
         }
         if (busy) return
         _state.update { it.copy(dialog = FundDialog.None) }
@@ -239,8 +345,12 @@ class FundListViewModel @Inject constructor(
 
     fun onDialogConfirm() {
         when (val dlg = _state.value.dialog) {
-            is FundDialog.CreateInput -> if (!dlg.isSubmitting) submitCreate(dlg)
-            is FundDialog.RenameInput -> if (!dlg.isSubmitting) submitRename(dlg)
+            is FundDialog.CreateInput      -> if (!dlg.isSubmitting) submitCreate(dlg)
+            is FundDialog.RenameInput      -> if (!dlg.isSubmitting) submitRename(dlg)
+            is FundDialog.DepositInput     -> if (!dlg.isSubmitting) submitDeposit(dlg)
+            is FundDialog.WithdrawInput    -> if (!dlg.isSubmitting) submitWithdraw(dlg)
+            is FundDialog.TransferInput    -> if (!dlg.isSubmitting) submitTransfer(dlg)
+            is FundDialog.ConfirmOperation -> if (!dlg.isSubmitting) executeConfirmedOperation(dlg)
             else -> Unit
         }
     }
@@ -388,6 +498,131 @@ class FundListViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Common pre-flight for the three money operations: parses the LTR shekel amount and
+     * requires a strictly-positive result (E6.8/9/10 all specify `amount_agoras > 0`).
+     * Returns `null` when validation has failed *and* the caller-supplied [onError] has
+     * already been invoked to surface the message — the caller should simply return.
+     */
+    private inline fun parseMoneyAmountStrictlyPositive(
+        amountText: String,
+        onError: (Int) -> Unit,
+    ): Long? = when (val parsed = parseShekelInput(amountText)) {
+        is ShekelParseResult.Success ->
+            if (parsed.agoras > 0) parsed.agoras
+            else { onError(R.string.fund_error_amount_must_be_positive); null }
+        ShekelParseResult.Empty            -> { onError(R.string.fund_error_amount_must_be_positive); null }
+        ShekelParseResult.NotANumber       -> { onError(R.string.fund_error_invalid_number); null }
+        ShekelParseResult.Negative         -> { onError(R.string.fund_error_amount_must_be_positive); null }
+        ShekelParseResult.TooManyDecimals  -> { onError(R.string.fund_error_too_many_decimals); null }
+    }
+
+    /**
+     * On Deposit "OK": validate the amount, then *stage* the confirmation dialog. The
+     * repository is not called yet — see [executeConfirmedOperation] for that step.
+     * Mirrors the desktop's `DepositAsync` which raises a `ConfirmationRequested` event
+     * after gathering the amount and only calls the service if the user approves.
+     */
+    private fun submitDeposit(dlg: FundDialog.DepositInput) {
+        val amount = parseMoneyAmountStrictlyPositive(dlg.amountText) { setDepositError(it) } ?: return
+        _state.update {
+            it.copy(
+                dialog = FundDialog.ConfirmOperation(
+                    kind = FundDialog.ConfirmOperation.Kind.Deposit,
+                    sourceFund = dlg.target,
+                    destinationFund = null,
+                    amountAgoras = amount,
+                ),
+            )
+        }
+    }
+
+    private fun submitWithdraw(dlg: FundDialog.WithdrawInput) {
+        val amount = parseMoneyAmountStrictlyPositive(dlg.amountText) { setWithdrawError(it) } ?: return
+        _state.update {
+            it.copy(
+                dialog = FundDialog.ConfirmOperation(
+                    kind = FundDialog.ConfirmOperation.Kind.Withdraw,
+                    sourceFund = dlg.target,
+                    destinationFund = null,
+                    amountAgoras = amount,
+                ),
+            )
+        }
+    }
+
+    private fun submitTransfer(dlg: FundDialog.TransferInput) {
+        // Destination must be picked first — show inline error instead of calling the repo.
+        val destinationId = dlg.destinationFundId
+        if (destinationId == null) {
+            setTransferError(R.string.fund_error_transfer_destination_required)
+            return
+        }
+        val destinationFund = dlg.candidates.firstOrNull { it.fundId == destinationId } ?: run {
+            // Selected fund disappeared from candidates (shouldn't happen because the list is
+            // captured at open-time). Bail out cleanly with the same inline error.
+            setTransferError(R.string.fund_error_transfer_destination_required)
+            return
+        }
+        val amount = parseMoneyAmountStrictlyPositive(dlg.amountText) { setTransferError(it) } ?: return
+
+        _state.update {
+            it.copy(
+                dialog = FundDialog.ConfirmOperation(
+                    kind = FundDialog.ConfirmOperation.Kind.Transfer,
+                    sourceFund = dlg.source,
+                    destinationFund = destinationFund,
+                    amountAgoras = amount,
+                ),
+            )
+        }
+    }
+
+    /**
+     * Fires the repository call for an already-confirmed operation. Errors are surfaced
+     * at the *screen* level (not back into a dialog) to match desktop's
+     * `ErrorMessage = "…"` behaviour after confirmation: the dialog closes and the user
+     * sees the failure on the underlying screen.
+     */
+    private fun executeConfirmedOperation(dlg: FundDialog.ConfirmOperation) {
+        _state.update { state ->
+            val current = state.dialog as? FundDialog.ConfirmOperation ?: return@update state
+            state.copy(dialog = current.copy(isSubmitting = true))
+        }
+        viewModelScope.launch {
+            val result: AppResult<*> = when (dlg.kind) {
+                FundDialog.ConfirmOperation.Kind.Deposit ->
+                    fundRepository.deposit(portfolioId, dlg.sourceFund.fundId, dlg.amountAgoras)
+                FundDialog.ConfirmOperation.Kind.Withdraw ->
+                    fundRepository.withdraw(portfolioId, dlg.sourceFund.fundId, dlg.amountAgoras)
+                FundDialog.ConfirmOperation.Kind.Transfer ->
+                    fundRepository.transfer(
+                        portfolioId,
+                        dlg.sourceFund.fundId,
+                        // ! safe: Transfer always carries a non-null destinationFund per
+                        // submitTransfer(); enforced by construction.
+                        dlg.destinationFund!!.fundId,
+                        dlg.amountAgoras,
+                    )
+            }
+            when (result) {
+                is AppResult.Success<*> -> {
+                    _state.update { it.copy(dialog = FundDialog.None) }
+                    syncCoordinator.triggerPostMutation(portfolioId)
+                    refresh()
+                }
+                is AppResult.Failure -> {
+                    val errorRes = when (dlg.kind) {
+                        FundDialog.ConfirmOperation.Kind.Deposit  -> depositErrorRes(result.error)
+                        FundDialog.ConfirmOperation.Kind.Withdraw -> withdrawErrorRes(result.error)
+                        FundDialog.ConfirmOperation.Kind.Transfer -> transferErrorRes(result.error)
+                    }
+                    _state.update { it.copy(dialog = FundDialog.None, errorMessageRes = errorRes) }
+                }
+            }
+        }
+    }
+
     private fun markCreateSubmitting(submitting: Boolean) {
         _state.update { state ->
             val dlg = state.dialog as? FundDialog.CreateInput ?: return@update state
@@ -419,6 +654,27 @@ class FundListViewModel @Inject constructor(
     private fun setRenameError(messageRes: Int) {
         _state.update { state ->
             val dlg = state.dialog as? FundDialog.RenameInput ?: return@update state
+            state.copy(dialog = dlg.copy(isSubmitting = false, errorMessageRes = messageRes))
+        }
+    }
+
+    private fun setDepositError(messageRes: Int) {
+        _state.update { state ->
+            val dlg = state.dialog as? FundDialog.DepositInput ?: return@update state
+            state.copy(dialog = dlg.copy(isSubmitting = false, errorMessageRes = messageRes))
+        }
+    }
+
+    private fun setWithdrawError(messageRes: Int) {
+        _state.update { state ->
+            val dlg = state.dialog as? FundDialog.WithdrawInput ?: return@update state
+            state.copy(dialog = dlg.copy(isSubmitting = false, errorMessageRes = messageRes))
+        }
+    }
+
+    private fun setTransferError(messageRes: Int) {
+        _state.update { state ->
+            val dlg = state.dialog as? FundDialog.TransferInput ?: return@update state
             state.copy(dialog = dlg.copy(isSubmitting = false, errorMessageRes = messageRes))
         }
     }
@@ -501,5 +757,33 @@ class FundListViewModel @Inject constructor(
         AppError.Validation.PortfolioClosed               -> R.string.fund_error_portfolio_closed
         is AppError.NotFound                              -> R.string.fund_error_not_found
         else                                              -> R.string.fund_error_delete_generic
+    }
+
+    private fun depositErrorRes(error: AppError): Int = when (error) {
+        AppError.Validation.NegativeAmount    -> R.string.fund_error_amount_must_be_positive
+        AppError.Validation.PortfolioClosed   -> R.string.fund_error_portfolio_closed
+        is AppError.NotFound                  -> R.string.fund_error_not_found
+        else                                  -> R.string.fund_error_deposit_generic
+    }
+
+    private fun withdrawErrorRes(error: AppError): Int = when (error) {
+        // E6.9 "old_balance >= amount_agoras" — the server raises ERR_INVARIANT:NEGATIVE_BALANCE
+        // when the resulting balance would go below zero, which is the insufficient-funds case.
+        AppError.Invariant.NegativeBalance    -> R.string.fund_error_insufficient_balance
+        AppError.Validation.NegativeAmount    -> R.string.fund_error_amount_must_be_positive
+        AppError.Validation.PortfolioClosed   -> R.string.fund_error_portfolio_closed
+        is AppError.NotFound                  -> R.string.fund_error_not_found
+        else                                  -> R.string.fund_error_withdraw_generic
+    }
+
+    private fun transferErrorRes(error: AppError): Int = when (error) {
+        AppError.Invariant.NegativeBalance    -> R.string.fund_error_insufficient_balance_transfer
+        AppError.Validation.SameFundTransfer  -> R.string.fund_error_same_fund_transfer
+        AppError.Validation.NegativeAmount    -> R.string.fund_error_amount_must_be_positive
+        AppError.Validation.PortfolioClosed   -> R.string.fund_error_portfolio_closed
+        // Transfer touches two funds; the desktop says "one of the funds was not found"
+        // for this case (PortfolioViewModel.cs TransferAsync catch FundNotFoundException).
+        is AppError.NotFound                  -> R.string.fund_error_transfer_not_found
+        else                                  -> R.string.fund_error_transfer_generic
     }
 }

@@ -136,4 +136,50 @@
     <string name="fund_error_create_generic">שגיאה ביצירת הקרן. נסה שוב מאוחר יותר.</string>
     <string name="fund_error_rename_generic">שגיאה בשינוי שם הקרן. נסה שוב מאוחר יותר.</string>
     <string name="fund_error_delete_generic">שגיאה במחיקת הקרן. נסה שוב מאוחר יותר.</string>
+
+    <!-- ========== Fund money operations (E6.8–E6.10, PR-6) ========== -->
+    <!-- Wording mirrors desktop PortfolioViewModel.cs Deposit/Withdraw/Transfer commands. -->
+
+    <!-- Menu items on each fund row -->
+    <string name="fund_action_deposit">הפקדה</string>
+    <string name="fund_action_withdraw">משיכה</string>
+    <string name="fund_action_transfer">העברה</string>
+
+    <!-- Dialog titles -->
+    <string name="fund_dialog_deposit_title">הפקדה לקרן</string>
+    <string name="fund_dialog_withdraw_title">משיכה מקרן</string>
+    <string name="fund_dialog_transfer_title">העברה בין קרנות</string>
+
+    <!-- Dialog field labels -->
+    <string name="fund_dialog_amount_label">סכום ₪</string>
+    <string name="fund_dialog_amount_hint">חייב להיות גדול מאפס</string>
+    <!-- "Fund:" prefix in deposit/withdraw dialogs, %1$s is the fund name. -->
+    <string name="fund_dialog_fund_label">קרן: %1$s</string>
+    <!-- Transfer dialog: "From: source-fund". %1$s is source fund name. -->
+    <string name="fund_dialog_transfer_source_label">מקרן: %1$s</string>
+    <!-- Transfer dialog: destination dropdown label. -->
+    <string name="fund_dialog_transfer_destination_label">לקרן</string>
+    <string name="fund_dialog_transfer_destination_placeholder">בחר קרן יעד</string>
+
+    <!-- Confirmation dialog: matches desktop PortfolioViewModel ConfirmationRequested wording. -->
+    <string name="fund_dialog_confirm_title">אישור פעולה</string>
+    <string name="fund_dialog_confirm_button">המשך</string>
+    <!-- %1$s is the formatted amount; %2$s is the target fund name. -->
+    <string name="fund_dialog_confirm_deposit">הפקדה של %1$s לקרן \"%2$s\". להמשיך?</string>
+    <string name="fund_dialog_confirm_withdraw">משיכה של %1$s מקרן \"%2$s\". להמשיך?</string>
+    <!-- %1$s amount; %2$s source fund; %3$s destination fund. -->
+    <string name="fund_dialog_confirm_transfer">העברה של %1$s מקרן \"%2$s\" לקרן \"%3$s\". להמשיך?</string>
+
+    <!-- Errors (mirror desktop wording) -->
+    <string name="fund_error_amount_must_be_positive">הסכום חייב להיות גדול מאפס.</string>
+    <string name="fund_error_insufficient_balance">אין מספיק יתרה בקרן לביצוע המשיכה.</string>
+    <string name="fund_error_insufficient_balance_transfer">אין מספיק יתרה בקרן המקור לביצוע ההעברה.</string>
+    <string name="fund_error_same_fund_transfer">לא ניתן להעביר מקרן לעצמה.</string>
+    <string name="fund_error_transfer_needs_two_funds">נדרשות לפחות שתי קרנות לביצוע העברה.</string>
+    <string name="fund_error_transfer_destination_required">נא לבחור קרן יעד.</string>
+    <!-- Transfer-specific not-found wording: either fund (source or destination) was missing. -->
+    <string name="fund_error_transfer_not_found">אחת הקרנות לא נמצאה.</string>
+    <string name="fund_error_deposit_generic">שגיאה בהפקדה. נסה שוב מאוחר יותר.</string>
+    <string name="fund_error_withdraw_generic">שגיאה במשיכה. נסה שוב מאוחר יותר.</string>
+    <string name="fund_error_transfer_generic">שגיאה בהעברה. נסה שוב מאוחר יותר.</string>
 </resources>

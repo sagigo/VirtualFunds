@@ -532,6 +532,312 @@ class FundListViewModelTest : FunSpec() {
             // Sanity-check the VM did construct correctly.
             vm.state.value.funds.size shouldBe 3
         }
+
+        // ── Deposit (E6.8) ───────────────────────────────────────────────────
+
+        test("deposit click opens the deposit dialog targeting the fund") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            val vm = buildVm()
+
+            vm.onDepositClick(fundA)
+
+            val dlg = vm.state.value.dialog.shouldBeInstanceOf<FundDialog.DepositInput>()
+            dlg.target.fundId shouldBe "fA"
+            dlg.amountText shouldBe ""
+        }
+
+        test("deposit OK after typing amount opens the ConfirmOperation dialog with parsed agoras") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            val vm = buildVm()
+
+            vm.onDepositClick(fundA)
+            vm.onDialogAmountChange("250.50")
+            vm.onDialogConfirm() // first OK — stages the confirm dialog, does NOT call repo
+
+            val confirm = vm.state.value.dialog.shouldBeInstanceOf<FundDialog.ConfirmOperation>()
+            confirm.kind shouldBe FundDialog.ConfirmOperation.Kind.Deposit
+            confirm.sourceFund.fundId shouldBe "fA"
+            confirm.amountAgoras shouldBe 25_050L
+            coVerify(exactly = 0) { fundRepo.deposit(any(), any(), any()) }
+        }
+
+        test("deposit fully confirmed calls repository with parsed agoras and refreshes") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            coEvery { fundRepo.deposit("p1", "fA", 25_050L) } returns AppResult.Success("op-1")
+            val vm = buildVm()
+
+            vm.onDepositClick(fundA)
+            vm.onDialogAmountChange("250.50")
+            vm.onDialogConfirm() // stage confirm
+            vm.onDialogConfirm() // confirm — now fires repo
+
+            coVerify(exactly = 1) { fundRepo.deposit("p1", "fA", 25_050L) }
+            // On success the dialog closes, sync trigger fires, refresh happens.
+            vm.state.value.dialog shouldBe FundDialog.None
+            coVerify(exactly = 1) { syncCoordinator.triggerPostMutation("p1") }
+            coVerify(exactly = 2) { fundRepo.getFunds(portfolioId) } // initial + refresh
+        }
+
+        test("dismissing the confirm dialog does not call the repository") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            val vm = buildVm()
+
+            vm.onDepositClick(fundA)
+            vm.onDialogAmountChange("100")
+            vm.onDialogConfirm() // stage confirm
+            vm.onDialogDismiss() // user cancels confirmation
+
+            vm.state.value.dialog shouldBe FundDialog.None
+            coVerify(exactly = 0) { fundRepo.deposit(any(), any(), any()) }
+        }
+
+        test("deposit rejects empty amount with positive-amount error and does not call repo") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            val vm = buildVm()
+
+            vm.onDepositClick(fundA)
+            vm.onDialogConfirm() // amountText is ""
+
+            val dlg = vm.state.value.dialog.shouldBeInstanceOf<FundDialog.DepositInput>()
+            dlg.errorMessageRes shouldBe R.string.fund_error_amount_must_be_positive
+            coVerify(exactly = 0) { fundRepo.deposit(any(), any(), any()) }
+        }
+
+        test("deposit rejects zero amount with positive-amount error") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            val vm = buildVm()
+
+            vm.onDepositClick(fundA)
+            vm.onDialogAmountChange("0")
+            vm.onDialogConfirm()
+
+            val dlg = vm.state.value.dialog.shouldBeInstanceOf<FundDialog.DepositInput>()
+            dlg.errorMessageRes shouldBe R.string.fund_error_amount_must_be_positive
+            coVerify(exactly = 0) { fundRepo.deposit(any(), any(), any()) }
+        }
+
+        test("deposit rejects non-numeric amount with invalid-number error") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            val vm = buildVm()
+
+            vm.onDepositClick(fundA)
+            vm.onDialogAmountChange("xyz")
+            vm.onDialogConfirm()
+
+            val dlg = vm.state.value.dialog.shouldBeInstanceOf<FundDialog.DepositInput>()
+            dlg.errorMessageRes shouldBe R.string.fund_error_invalid_number
+            coVerify(exactly = 0) { fundRepo.deposit(any(), any(), any()) }
+        }
+
+        test("deposit rejects too-many-decimals with matching error") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            val vm = buildVm()
+
+            vm.onDepositClick(fundA)
+            vm.onDialogAmountChange("100.123")
+            vm.onDialogConfirm()
+
+            val dlg = vm.state.value.dialog.shouldBeInstanceOf<FundDialog.DepositInput>()
+            dlg.errorMessageRes shouldBe R.string.fund_error_too_many_decimals
+            coVerify(exactly = 0) { fundRepo.deposit(any(), any(), any()) }
+        }
+
+        test("deposit server PortfolioClosed: after confirm, dialog closes and screen-level error is set") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            coEvery { fundRepo.deposit("p1", "fA", 10_000L) } returns
+                AppResult.Failure(AppError.Validation.PortfolioClosed)
+            val vm = buildVm()
+
+            vm.onDepositClick(fundA)
+            vm.onDialogAmountChange("100")
+            vm.onDialogConfirm() // stage confirm
+            vm.onDialogConfirm() // fire repo
+
+            vm.state.value.dialog shouldBe FundDialog.None
+            vm.state.value.errorMessageRes shouldBe R.string.fund_error_portfolio_closed
+        }
+
+        // ── Withdraw (E6.9) ──────────────────────────────────────────────────
+
+        test("withdraw click opens the withdraw dialog targeting the fund") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            val vm = buildVm()
+
+            vm.onWithdrawClick(fundB)
+
+            val dlg = vm.state.value.dialog.shouldBeInstanceOf<FundDialog.WithdrawInput>()
+            dlg.target.fundId shouldBe "fB"
+        }
+
+        test("withdraw fully confirmed calls repository with positive agoras and refreshes") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            coEvery { fundRepo.withdraw("p1", "fA", 5_000L) } returns AppResult.Success("op-2")
+            val vm = buildVm()
+
+            vm.onWithdrawClick(fundA)
+            vm.onDialogAmountChange("50")
+            vm.onDialogConfirm() // stage confirm
+            vm.onDialogConfirm() // fire repo
+
+            coVerify(exactly = 1) { fundRepo.withdraw("p1", "fA", 5_000L) }
+            vm.state.value.dialog shouldBe FundDialog.None
+            coVerify(exactly = 1) { syncCoordinator.triggerPostMutation("p1") }
+        }
+
+        test("withdraw server NegativeBalance: after confirm, screen-level insufficient-balance error") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            coEvery { fundRepo.withdraw("p1", "fA", 99_999_99L) } returns
+                AppResult.Failure(AppError.Invariant.NegativeBalance)
+            val vm = buildVm()
+
+            vm.onWithdrawClick(fundA)
+            vm.onDialogAmountChange("99999.99")
+            vm.onDialogConfirm() // stage confirm
+            vm.onDialogConfirm() // fire repo
+
+            vm.state.value.dialog shouldBe FundDialog.None
+            vm.state.value.errorMessageRes shouldBe R.string.fund_error_insufficient_balance
+        }
+
+        test("withdraw rejects negative input with positive-amount error") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            val vm = buildVm()
+
+            vm.onWithdrawClick(fundA)
+            vm.onDialogAmountChange("-100")
+            vm.onDialogConfirm()
+
+            val dlg = vm.state.value.dialog.shouldBeInstanceOf<FundDialog.WithdrawInput>()
+            dlg.errorMessageRes shouldBe R.string.fund_error_amount_must_be_positive
+            coVerify(exactly = 0) { fundRepo.withdraw(any(), any(), any()) }
+        }
+
+        // ── Transfer (E6.10) ─────────────────────────────────────────────────
+
+        test("transfer click on portfolio with 2+ funds opens dialog with candidates excluding source") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            val vm = buildVm()
+
+            vm.onTransferClick(fundA)
+
+            val dlg = vm.state.value.dialog.shouldBeInstanceOf<FundDialog.TransferInput>()
+            dlg.source.fundId shouldBe "fA"
+            dlg.candidates.map { it.fundId } shouldBe listOf("fB", "fC")
+            dlg.destinationFundId shouldBe null
+        }
+
+        test("transfer click with only one fund surfaces screen-level error and no dialog") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(listOf(fundA))
+            val vm = buildVm()
+
+            vm.onTransferClick(fundA)
+
+            vm.state.value.dialog shouldBe FundDialog.None
+            vm.state.value.errorMessageRes shouldBe R.string.fund_error_transfer_needs_two_funds
+        }
+
+        test("transfer confirm without picking destination shows destination-required error") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            val vm = buildVm()
+
+            vm.onTransferClick(fundA)
+            vm.onDialogAmountChange("100")
+            vm.onDialogConfirm()
+
+            val dlg = vm.state.value.dialog.shouldBeInstanceOf<FundDialog.TransferInput>()
+            dlg.errorMessageRes shouldBe R.string.fund_error_transfer_destination_required
+            coVerify(exactly = 0) { fundRepo.transfer(any(), any(), any(), any()) }
+        }
+
+        test("transfer fully confirmed calls repository with source/destination/amount and refreshes") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            coEvery { fundRepo.transfer("p1", "fA", "fB", 20_000L) } returns AppResult.Success("op-3")
+            val vm = buildVm()
+
+            vm.onTransferClick(fundA)
+            vm.onTransferDestinationChange("fB")
+            vm.onDialogAmountChange("200")
+            vm.onDialogConfirm() // stage confirm
+            vm.onDialogConfirm() // fire repo
+
+            coVerify(exactly = 1) { fundRepo.transfer("p1", "fA", "fB", 20_000L) }
+            vm.state.value.dialog shouldBe FundDialog.None
+            coVerify(exactly = 1) { syncCoordinator.triggerPostMutation("p1") }
+        }
+
+        test("transfer staging holds source + destination + amount before firing repo") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            val vm = buildVm()
+
+            vm.onTransferClick(fundA)
+            vm.onTransferDestinationChange("fB")
+            vm.onDialogAmountChange("150.25")
+            vm.onDialogConfirm()
+
+            val confirm = vm.state.value.dialog.shouldBeInstanceOf<FundDialog.ConfirmOperation>()
+            confirm.kind shouldBe FundDialog.ConfirmOperation.Kind.Transfer
+            confirm.sourceFund.fundId shouldBe "fA"
+            confirm.destinationFund?.fundId shouldBe "fB"
+            confirm.amountAgoras shouldBe 15_025L
+        }
+
+        test("transfer server SameFundTransfer: after confirm, screen-level same-fund error") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            coEvery { fundRepo.transfer("p1", "fA", "fB", 10_000L) } returns
+                AppResult.Failure(AppError.Validation.SameFundTransfer)
+            val vm = buildVm()
+
+            vm.onTransferClick(fundA)
+            vm.onTransferDestinationChange("fB")
+            vm.onDialogAmountChange("100")
+            vm.onDialogConfirm() // stage confirm
+            vm.onDialogConfirm() // fire repo
+
+            vm.state.value.dialog shouldBe FundDialog.None
+            vm.state.value.errorMessageRes shouldBe R.string.fund_error_same_fund_transfer
+        }
+
+        test("transfer server NegativeBalance: after confirm, screen-level insufficient-transfer error") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            coEvery { fundRepo.transfer("p1", "fA", "fB", 99_999_99L) } returns
+                AppResult.Failure(AppError.Invariant.NegativeBalance)
+            val vm = buildVm()
+
+            vm.onTransferClick(fundA)
+            vm.onTransferDestinationChange("fB")
+            vm.onDialogAmountChange("99999.99")
+            vm.onDialogConfirm() // stage confirm
+            vm.onDialogConfirm() // fire repo
+
+            vm.state.value.dialog shouldBe FundDialog.None
+            vm.state.value.errorMessageRes shouldBe R.string.fund_error_insufficient_balance_transfer
+        }
+
+        test("transfer server NotFound: after confirm, screen-level transfer-not-found error") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            coEvery { fundRepo.transfer("p1", "fA", "fB", 5_000L) } returns
+                AppResult.Failure(AppError.NotFound("fund"))
+            val vm = buildVm()
+
+            vm.onTransferClick(fundA)
+            vm.onTransferDestinationChange("fB")
+            vm.onDialogAmountChange("50")
+            vm.onDialogConfirm() // stage confirm
+            vm.onDialogConfirm() // fire repo
+
+            vm.state.value.dialog shouldBe FundDialog.None
+            vm.state.value.errorMessageRes shouldBe R.string.fund_error_transfer_not_found
+        }
+
+        test("dismiss closes a deposit/withdraw/transfer dialog when not submitting") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            val vm = buildVm()
+
+            vm.onWithdrawClick(fundA)
+            vm.state.value.dialog.shouldBeInstanceOf<FundDialog.WithdrawInput>()
+            vm.onDialogDismiss()
+            vm.state.value.dialog shouldBe FundDialog.None
+        }
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
