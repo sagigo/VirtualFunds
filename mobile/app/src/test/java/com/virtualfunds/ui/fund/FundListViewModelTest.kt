@@ -838,6 +838,179 @@ class FundListViewModelTest : FunSpec() {
             vm.onDialogDismiss()
             vm.state.value.dialog shouldBe FundDialog.None
         }
+
+        // ── Revalue portfolio (E6.11) ────────────────────────────────────────
+
+        test("revalue click opens the RevalueInput dialog") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            val vm = buildVm()
+
+            vm.onRevalueClick()
+
+            val dlg = vm.state.value.dialog.shouldBeInstanceOf<FundDialog.RevalueInput>()
+            dlg.newTotalText shouldBe ""
+            dlg.errorMessageRes shouldBe 0
+        }
+
+        test("revalue click on empty portfolio sets a screen-level error and opens no dialog") {
+            // Mirrors desktop RevaluePortfolioAsync: `if (Funds.Count == 0) ErrorMessage = ...; return.`
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(emptyList())
+            val vm = buildVm()
+
+            vm.onRevalueClick()
+
+            vm.state.value.dialog shouldBe FundDialog.None
+            vm.state.value.errorMessageRes shouldBe R.string.fund_error_no_funds_for_revalue
+        }
+
+        test("revalue OK with valid amount stages ConfirmRevalue with old + new totals") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            val vm = buildVm()
+            // Old total from the loaded list: 500_00 + 300_00 + 200_00 = 1000_00 agoras.
+            val expectedOldTotal = sampleFunds.sumOf { it.balanceAgoras }
+
+            vm.onRevalueClick()
+            vm.onRevalueAmountChange("1500.00")
+            vm.onDialogConfirm() // stage confirm; must NOT call repo yet
+
+            val confirm = vm.state.value.dialog.shouldBeInstanceOf<FundDialog.ConfirmRevalue>()
+            confirm.oldTotalAgoras shouldBe expectedOldTotal
+            confirm.newTotalAgoras shouldBe 150_000L
+            coVerify(exactly = 0) { fundRepo.revaluePortfolio(any(), any()) }
+        }
+
+        test("revalue rejects empty / zero / negative / non-numeric / too-many-decimals") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+
+            // Each case opens a fresh dialog, types the bad input, and asserts the
+            // expected inline error. We rebuild the VM per case so the dialog state
+            // doesn't carry over.
+            data class Case(val input: String, val expectedErrorRes: Int)
+            val cases = listOf(
+                Case("", R.string.fund_error_amount_must_be_positive),       // empty
+                Case("0", R.string.fund_error_amount_must_be_positive),      // zero
+                Case("-50", R.string.fund_error_amount_must_be_positive),    // negative (parser → Negative)
+                Case("abc", R.string.fund_error_invalid_number),             // non-numeric
+                Case("100.123", R.string.fund_error_too_many_decimals),      // too many decimals
+            )
+
+            for ((input, expectedErrorRes) in cases) {
+                val vm = buildVm()
+                vm.onRevalueClick()
+                vm.onRevalueAmountChange(input)
+                vm.onDialogConfirm()
+
+                val dlg = vm.state.value.dialog.shouldBeInstanceOf<FundDialog.RevalueInput>()
+                dlg.errorMessageRes shouldBe expectedErrorRes
+            }
+            coVerify(exactly = 0) { fundRepo.revaluePortfolio(any(), any()) }
+        }
+
+        test("revalue fully confirmed calls repository with parsed agoras and refreshes") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            coEvery { fundRepo.revaluePortfolio("p1", 200_000L) } returns AppResult.Success("op-rev-1")
+            val vm = buildVm()
+
+            vm.onRevalueClick()
+            vm.onRevalueAmountChange("2000")
+            vm.onDialogConfirm() // stage confirm
+            vm.onDialogConfirm() // confirm — fires repo
+
+            coVerify(exactly = 1) { fundRepo.revaluePortfolio("p1", 200_000L) }
+            vm.state.value.dialog shouldBe FundDialog.None
+            coVerify(exactly = 1) { syncCoordinator.triggerPostMutation("p1") }
+            coVerify(exactly = 2) { fundRepo.getFunds(portfolioId) } // initial + refresh
+        }
+
+        test("revalue no-op result (same total) still closes dialog and triggers refresh + sync") {
+            // E6.11 step 3: when new total == old total, the repository returns Success(null)
+            // and logs nothing. The VM should still close the dialog and fire its post-
+            // mutation flow harmlessly — the refresh is cheap and keeps behaviour uniform.
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            coEvery { fundRepo.revaluePortfolio("p1", 100_000L) } returns AppResult.Success(null)
+            val vm = buildVm()
+
+            vm.onRevalueClick()
+            vm.onRevalueAmountChange("1000.00") // exactly the current total
+            vm.onDialogConfirm()
+            vm.onDialogConfirm()
+
+            vm.state.value.dialog shouldBe FundDialog.None
+            coVerify(exactly = 1) { syncCoordinator.triggerPostMutation("p1") }
+        }
+
+        test("revalue server PortfolioTotalIsZero: screen-level message matches desktop") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            coEvery { fundRepo.revaluePortfolio("p1", 50_000L) } returns
+                AppResult.Failure(AppError.Validation.PortfolioTotalIsZero)
+            val vm = buildVm()
+
+            vm.onRevalueClick()
+            vm.onRevalueAmountChange("500")
+            vm.onDialogConfirm()
+            vm.onDialogConfirm()
+
+            vm.state.value.dialog shouldBe FundDialog.None
+            vm.state.value.errorMessageRes shouldBe R.string.fund_error_portfolio_total_is_zero
+        }
+
+        test("revalue server RevalueWouldZeroFund: screen-level message matches desktop") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            coEvery { fundRepo.revaluePortfolio("p1", 1L) } returns
+                AppResult.Failure(AppError.Validation.RevalueWouldZeroFund)
+            val vm = buildVm()
+
+            vm.onRevalueClick()
+            vm.onRevalueAmountChange("0.01")
+            vm.onDialogConfirm()
+            vm.onDialogConfirm()
+
+            vm.state.value.dialog shouldBe FundDialog.None
+            vm.state.value.errorMessageRes shouldBe R.string.fund_error_revalue_would_zero_fund
+        }
+
+        test("revalue server PortfolioClosed: screen-level closed-portfolio message") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            coEvery { fundRepo.revaluePortfolio("p1", 200_000L) } returns
+                AppResult.Failure(AppError.Validation.PortfolioClosed)
+            val vm = buildVm()
+
+            vm.onRevalueClick()
+            vm.onRevalueAmountChange("2000")
+            vm.onDialogConfirm()
+            vm.onDialogConfirm()
+
+            vm.state.value.dialog shouldBe FundDialog.None
+            vm.state.value.errorMessageRes shouldBe R.string.fund_error_portfolio_closed
+        }
+
+        test("revalue server TotalMismatch: screen-level mismatch message") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            coEvery { fundRepo.revaluePortfolio("p1", 200_000L) } returns
+                AppResult.Failure(AppError.Invariant.TotalMismatch)
+            val vm = buildVm()
+
+            vm.onRevalueClick()
+            vm.onRevalueAmountChange("2000")
+            vm.onDialogConfirm()
+            vm.onDialogConfirm()
+
+            vm.state.value.dialog shouldBe FundDialog.None
+            vm.state.value.errorMessageRes shouldBe R.string.fund_error_total_mismatch
+        }
+
+        test("revalue dismissing the confirm dialog does not call the repository") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            val vm = buildVm()
+
+            vm.onRevalueClick()
+            vm.onRevalueAmountChange("2000")
+            vm.onDialogConfirm() // stage confirm
+            vm.onDialogDismiss() // user backs out before committing
+
+            vm.state.value.dialog shouldBe FundDialog.None
+            coVerify(exactly = 0) { fundRepo.revaluePortfolio(any(), any()) }
+        }
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

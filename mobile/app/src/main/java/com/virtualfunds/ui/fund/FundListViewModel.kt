@@ -121,6 +121,33 @@ sealed class FundDialog {
     }
 
     /**
+     * Dialog for revaluing the portfolio total (E6.11). The user types the new total in
+     * shekels; on OK we validate it (`> 0`), then transition to [ConfirmRevalue] showing
+     * both old and new totals so they can verify before committing.
+     *
+     * Mirrors the desktop's `RevaluePortfolioAsync` which opens an `AmountInputRequested`
+     * dialog titled "עדכון שווי תיק" and only calls the service after a separate
+     * confirmation prompt.
+     */
+    data class RevalueInput(
+        val newTotalText: String = "",
+        val isSubmitting: Boolean = false,
+        val errorMessageRes: Int = 0,
+    ) : FundDialog()
+
+    /**
+     * Final confirmation for [RevalueInput]: shows the old → new formatted totals so the
+     * user can see exactly what they're about to commit. Kept distinct from
+     * [ConfirmOperation] because the message wording references the portfolio (not a fund)
+     * and there's no source/destination fund concept here.
+     */
+    data class ConfirmRevalue(
+        val oldTotalAgoras: Long,
+        val newTotalAgoras: Long,
+        val isSubmitting: Boolean = false,
+    ) : FundDialog()
+
+    /**
      * Dialog for transferring money between two funds in the same portfolio (E6.10).
      *
      * [source] is fixed when the dialog opens (it's the fund whose ⋮ menu was tapped).
@@ -276,6 +303,27 @@ class FundListViewModel @Inject constructor(
     }
 
     /**
+     * Open the revaluation dialog (E6.11). If the portfolio has no funds, surface a screen-
+     * level error instead of opening an unusable dialog — mirrors desktop
+     * `RevaluePortfolioAsync`'s "לא ניתן לעדכן שווי תיק ללא קרנות." check.
+     */
+    fun onRevalueClick() {
+        if (_state.value.funds.isEmpty()) {
+            _state.update { it.copy(errorMessageRes = R.string.fund_error_no_funds_for_revalue) }
+            return
+        }
+        _state.update { it.copy(dialog = FundDialog.RevalueInput(), errorMessageRes = 0) }
+    }
+
+    /** Update the new-total text field inside the active [FundDialog.RevalueInput]. */
+    fun onRevalueAmountChange(value: String) {
+        _state.update { state ->
+            val dlg = state.dialog as? FundDialog.RevalueInput ?: return@update state
+            state.copy(dialog = dlg.copy(newTotalText = value, errorMessageRes = 0))
+        }
+    }
+
+    /**
      * Open the transfer dialog with [fund] as the source (E6.10). If the portfolio has fewer
      * than two funds, surface a screen-level error instead of opening an unusable dialog —
      * mirrors desktop wording "נדרשות לפחות שתי קרנות לביצוע העברה.".
@@ -337,6 +385,8 @@ class FundListViewModel @Inject constructor(
             is FundDialog.WithdrawInput    -> current.isSubmitting
             is FundDialog.TransferInput    -> current.isSubmitting
             is FundDialog.ConfirmOperation -> current.isSubmitting
+            is FundDialog.RevalueInput     -> current.isSubmitting
+            is FundDialog.ConfirmRevalue   -> current.isSubmitting
             FundDialog.None                -> false
         }
         if (busy) return
@@ -351,6 +401,8 @@ class FundListViewModel @Inject constructor(
             is FundDialog.WithdrawInput    -> if (!dlg.isSubmitting) submitWithdraw(dlg)
             is FundDialog.TransferInput    -> if (!dlg.isSubmitting) submitTransfer(dlg)
             is FundDialog.ConfirmOperation -> if (!dlg.isSubmitting) executeConfirmedOperation(dlg)
+            is FundDialog.RevalueInput     -> if (!dlg.isSubmitting) submitRevalue(dlg)
+            is FundDialog.ConfirmRevalue   -> if (!dlg.isSubmitting) executeConfirmedRevalue(dlg)
             else -> Unit
         }
     }
@@ -623,6 +675,72 @@ class FundListViewModel @Inject constructor(
         }
     }
 
+    /**
+     * On Revalue "OK": validate the new total, then transition to [FundDialog.ConfirmRevalue]
+     * showing both old and new totals. Mirrors desktop's two-step
+     * AmountInputRequested → ConfirmationRequested sequence in `RevaluePortfolioAsync`.
+     *
+     * The current portfolio total comes from the already-loaded fund list (`state.funds`)
+     * — same source the UI is rendering. The repository will fetch fresh balances again
+     * before computing deltas, so a stale value here only affects the confirmation message,
+     * never the real math.
+     */
+    private fun submitRevalue(dlg: FundDialog.RevalueInput) {
+        val newTotal = parseMoneyAmountStrictlyPositive(dlg.newTotalText) { setRevalueError(it) }
+            ?: return
+        val oldTotal = _state.value.funds.sumOf { it.balanceAgoras }
+        _state.update {
+            it.copy(
+                dialog = FundDialog.ConfirmRevalue(
+                    oldTotalAgoras = oldTotal,
+                    newTotalAgoras = newTotal,
+                ),
+            )
+        }
+    }
+
+    /**
+     * Fires the repository call for an already-confirmed revaluation. Server errors are
+     * surfaced as screen-level messages (matching desktop's `ErrorMessage` pattern), with
+     * a special case: `Validation.PortfolioTotalIsZero` is a *normal* validation failure
+     * that the spec defines for revaluation (E6.11 step 2) so it gets its own string,
+     * distinct from the deposit/withdraw `NotFound` etc. mappings.
+     */
+    private fun executeConfirmedRevalue(dlg: FundDialog.ConfirmRevalue) {
+        _state.update { state ->
+            val current = state.dialog as? FundDialog.ConfirmRevalue ?: return@update state
+            state.copy(dialog = current.copy(isSubmitting = true))
+        }
+        viewModelScope.launch {
+            when (val result = fundRepository.revaluePortfolio(portfolioId, dlg.newTotalAgoras)) {
+                is AppResult.Success -> {
+                    // Result is the operation_id or null (no-op when totals match exactly,
+                    // or when every per-fund delta rounded to zero). Either way: close
+                    // the dialog, broadcast a mutation so the portfolio-list also refreshes,
+                    // and reload our own list.
+                    _state.update { it.copy(dialog = FundDialog.None) }
+                    syncCoordinator.triggerPostMutation(portfolioId)
+                    refresh()
+                }
+                is AppResult.Failure -> {
+                    _state.update {
+                        it.copy(
+                            dialog = FundDialog.None,
+                            errorMessageRes = revalueErrorRes(result.error),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private fun setRevalueError(messageRes: Int) {
+        _state.update { state ->
+            val dlg = state.dialog as? FundDialog.RevalueInput ?: return@update state
+            state.copy(dialog = dlg.copy(isSubmitting = false, errorMessageRes = messageRes))
+        }
+    }
+
     private fun markCreateSubmitting(submitting: Boolean) {
         _state.update { state ->
             val dlg = state.dialog as? FundDialog.CreateInput ?: return@update state
@@ -774,6 +892,25 @@ class FundListViewModel @Inject constructor(
         AppError.Validation.PortfolioClosed   -> R.string.fund_error_portfolio_closed
         is AppError.NotFound                  -> R.string.fund_error_not_found
         else                                  -> R.string.fund_error_withdraw_generic
+    }
+
+    private fun revalueErrorRes(error: AppError): Int = when (error) {
+        // E6.11 step 2: current total is zero ⇒ can't scale proportionally.
+        AppError.Validation.PortfolioTotalIsZero -> R.string.fund_error_portfolio_total_is_zero
+        // E6.11 step 8b: revaluation would round a positive-balance fund to zero.
+        AppError.Validation.RevalueWouldZeroFund -> R.string.fund_error_revalue_would_zero_fund
+        AppError.Validation.NegativeAmount       -> R.string.fund_error_amount_must_be_positive
+        AppError.Validation.PortfolioClosed      -> R.string.fund_error_portfolio_closed
+        // Server-side invariant check failed after the commit attempt. Rare in practice
+        // (would require a concurrent write between client read and server lock).
+        AppError.Invariant.TotalMismatch         -> R.string.fund_error_total_mismatch
+        // E6.5 edge case: client-side remainder distribution couldn't find enough
+        // positive-balance funds to absorb a negative remainder. Same message as the
+        // server's negative-balance error — both indicate an arithmetically impossible
+        // revaluation given the current balances.
+        AppError.Invariant.NegativeBalance       -> R.string.fund_error_revalue_would_zero_fund
+        is AppError.NotFound                     -> R.string.portfolio_error_not_found
+        else                                     -> R.string.fund_error_revalue_generic
     }
 
     private fun transferErrorRes(error: AppError): Int = when (error) {

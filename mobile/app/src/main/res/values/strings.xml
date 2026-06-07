@@ -182,4 +182,27 @@
     <string name="fund_error_deposit_generic">שגיאה בהפקדה. נסה שוב מאוחר יותר.</string>
     <string name="fund_error_withdraw_generic">שגיאה במשיכה. נסה שוב מאוחר יותר.</string>
     <string name="fund_error_transfer_generic">שגיאה בהעברה. נסה שוב מאוחר יותר.</string>
+
+    <!-- ========== Portfolio revaluation (E6.11, PR-6) ========== -->
+    <!-- Wording mirrors desktop PortfolioViewModel.cs RevaluePortfolioAsync. -->
+
+    <!-- Top app bar overflow menu (portfolio-level actions, not per-fund). -->
+    <string name="fund_list_cd_more_actions">פעולות נוספות</string>
+    <string name="fund_action_revalue_portfolio">עדכון שווי תיק</string>
+
+    <!-- Revaluation input dialog. -->
+    <string name="fund_dialog_revalue_title">עדכון שווי תיק</string>
+    <string name="fund_dialog_revalue_new_total_label">שווי תיק חדש ₪</string>
+    <string name="fund_dialog_revalue_amount_hint">חייב להיות גדול מאפס</string>
+
+    <!-- Revaluation confirmation prompt — desktop:
+         "עדכון שווי התיק מ-{old} ל-{new}. להמשיך?" -->
+    <string name="fund_dialog_confirm_revalue">עדכון שווי התיק מ-%1$s ל-%2$s. להמשיך?</string>
+
+    <!-- Errors — mirror desktop catch blocks word-for-word. -->
+    <string name="fund_error_no_funds_for_revalue">לא ניתן לעדכן שווי תיק ללא קרנות.</string>
+    <string name="fund_error_portfolio_total_is_zero">לא ניתן לעדכן שווי כאשר סך התיק הוא אפס.</string>
+    <string name="fund_error_revalue_would_zero_fund">השווי החדש קיצוני מדי — אחת הקרנות תאבד את חלקה לחלוטין.</string>
+    <string name="fund_error_total_mismatch">שגיאה בחישוב העדכון. נסה שוב.</string>
+    <string name="fund_error_revalue_generic">שגיאה בעדכון שווי התיק. נסה שוב מאוחר יותר.</string>
 </resources>

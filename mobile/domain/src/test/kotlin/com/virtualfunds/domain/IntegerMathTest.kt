@@ -100,4 +100,62 @@ class IntegerMathTest : FunSpec({
             bankersRound(1L, -1L)
         }
     }
+
+    // --- Desktop parity anchors (E10.4) ---
+    // Each test below mirrors one row of IntegerMathTests.cs InlineData. The expected
+    // values are taken verbatim from the desktop tests so a regression in either
+    // implementation surfaces as a failing parity test on this side.
+
+    test("parity 95/10 → 10 (tie at 9.5, 9 is odd → up)") {
+        bankersRound(95L, 10L) shouldBe 10L
+    }
+
+    test("parity 85/10 → 8 (tie at 8.5, 8 is even → stay)") {
+        bankersRound(85L, 10L) shouldBe 8L
+    }
+
+    test("parity 25/10 → 2 (tie at 2.5, 2 is even → stay)") {
+        bankersRound(25L, 10L) shouldBe 2L
+    }
+
+    test("parity -25/10 → -2 (tie at -2.5, 2 is even → stay; sign reapplied)") {
+        bankersRound(-25L, 10L) shouldBe -2L
+    }
+
+    test("parity 94/10 → 9 (below midpoint)") {
+        bankersRound(94L, 10L) shouldBe 9L
+    }
+
+    test("parity 99/10 → 10 (above midpoint)") {
+        bankersRound(99L, 10L) shouldBe 10L
+    }
+
+    // E6.11 proportional-scaling scenarios — these are the actual rounding inputs the
+    // revaluation algorithm computes inside SupabaseFundRepository.revaluePortfolio.
+
+    test("E6.11 scaling: 3 funds × 3333, new total 10000 → each rounds to 3333") {
+        // Each fund's share: 10000 * 3333 / 9999 = 3333.3333... → 3333.
+        // (Remainder distribution is the repo's job, not this function's.)
+        val newTotal = 10_000L
+        val share = 3_333L
+        val oldTotal = 9_999L
+        bankersRound(newTotal.toBigInteger() * share.toBigInteger(), oldTotal) shouldBe 3_333L
+    }
+
+    test("E6.11 scaling: tie case rounds to even (50.5 with q=50 → 50)") {
+        // 2 funds: 50 and 50, old total 100, new total 101.
+        // Fund share: 101 * 50 / 100 = 50.5  → tie, q=50 (even) → 50.
+        bankersRound(101L.toBigInteger() * 50L.toBigInteger(), 100L) shouldBe 50L
+    }
+
+    test("E6.11 scaling: large values via BigInteger numerator do not overflow") {
+        // 10 billion shekels each side. newTotal * balance would overflow Long.
+        val newTotal = 1_000_000_000_000L          // 10 billion NIS in agoras
+        val balance = 500_000_000_000L
+        val oldTotal = 1_000_000_000_000L
+        bankersRound(
+            newTotal.toBigInteger() * balance.toBigInteger(),
+            oldTotal,
+        ) shouldBe 500_000_000_000L
+    }
 })

@@ -99,8 +99,10 @@ fun FundListScreen(
         onDeposit = viewModel::onDepositClick,
         onWithdraw = viewModel::onWithdrawClick,
         onTransfer = viewModel::onTransferClick,
+        onRevalue = viewModel::onRevalueClick,
         onDialogNameChange = viewModel::onDialogNameChange,
         onDialogAmountChange = viewModel::onDialogAmountChange,
+        onDialogRevalueAmountChange = viewModel::onRevalueAmountChange,
         onDialogTransferDestinationChange = viewModel::onTransferDestinationChange,
         onDialogConfirm = viewModel::onDialogConfirm,
         onDialogDismiss = viewModel::onDialogDismiss,
@@ -124,8 +126,10 @@ private fun FundListContent(
     onDeposit: (FundListItem) -> Unit,
     onWithdraw: (FundListItem) -> Unit,
     onTransfer: (FundListItem) -> Unit,
+    onRevalue: () -> Unit,
     onDialogNameChange: (String) -> Unit,
     onDialogAmountChange: (String) -> Unit,
+    onDialogRevalueAmountChange: (String) -> Unit,
     onDialogTransferDestinationChange: (String) -> Unit,
     onDialogConfirm: () -> Unit,
     onDialogDismiss: () -> Unit,
@@ -173,6 +177,10 @@ private fun FundListContent(
                         current = state.sortMode,
                         onChange = onSortModeChange,
                     )
+                    // Top-bar overflow menu hosts portfolio-level actions (not per-fund).
+                    // Revaluation lives here today; future PRs will add CSV export and
+                    // scheduled-deposit management to the same menu.
+                    PortfolioActionsMenu(onRevalue = onRevalue)
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -266,7 +274,50 @@ private fun FundListContent(
             onConfirm = onDialogConfirm,
             onDismiss = onDialogDismiss,
         )
+        is FundDialog.RevalueInput -> RevalueDialog(
+            dialog = dlg,
+            onAmountChange = onDialogRevalueAmountChange,
+            onConfirm = onDialogConfirm,
+            onDismiss = onDialogDismiss,
+        )
+        is FundDialog.ConfirmRevalue -> ConfirmRevalueDialog(
+            dialog = dlg,
+            onConfirm = onDialogConfirm,
+            onDismiss = onDialogDismiss,
+        )
         FundDialog.None -> { /* nothing to render */ }
+    }
+}
+
+/**
+ * Top app bar overflow menu for portfolio-level actions. Sits next to the [SortMenu] in
+ * the actions slot. A ⋮ icon expands a small dropdown — the standard Material 3 pattern
+ * for "more actions" on a screen.
+ */
+@Composable
+private fun PortfolioActionsMenu(
+    onRevalue: () -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            Icon(
+                imageVector = Icons.Default.MoreVert,
+                contentDescription = stringResource(R.string.fund_list_cd_more_actions),
+            )
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.fund_action_revalue_portfolio)) },
+                onClick = {
+                    expanded = false
+                    onRevalue()
+                },
+            )
+        }
     }
 }
 
@@ -1005,6 +1056,111 @@ private fun ConfirmOperationDialog(
     )
 }
 
+/**
+ * Revaluation input dialog (E6.11) — first step. Single LTR amount field for the new total.
+ * Same shape as the deposit/withdraw amount field, but no fund-name context (the
+ * operation is portfolio-level).
+ */
+@Composable
+private fun RevalueDialog(
+    dialog: FundDialog.RevalueInput,
+    onAmountChange: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.fund_dialog_revalue_title)) },
+        text = {
+            Column {
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                    OutlinedTextField(
+                        value = dialog.newTotalText,
+                        onValueChange = onAmountChange,
+                        label = { Text(stringResource(R.string.fund_dialog_revalue_new_total_label)) },
+                        supportingText = {
+                            Text(stringResource(R.string.fund_dialog_revalue_amount_hint))
+                        },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        enabled = !dialog.isSubmitting,
+                        isError = dialog.errorMessageRes != 0,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                if (dialog.errorMessageRes != 0) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(dialog.errorMessageRes),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = !dialog.isSubmitting) {
+                if (dialog.isSubmitting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.height(18.dp),
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Text(stringResource(R.string.fund_dialog_ok))
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !dialog.isSubmitting) {
+                Text(stringResource(R.string.fund_dialog_cancel))
+            }
+        },
+    )
+}
+
+/**
+ * Revaluation confirmation dialog (E6.11) — second step. Shows the formatted old → new
+ * totals so the user can verify before committing. Distinct from [ConfirmOperationDialog]
+ * because the wording references the portfolio total (not a fund + amount).
+ */
+@Composable
+private fun ConfirmRevalueDialog(
+    dialog: FundDialog.ConfirmRevalue,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.fund_dialog_confirm_title)) },
+        text = {
+            Text(
+                stringResource(
+                    R.string.fund_dialog_confirm_revalue,
+                    formatAgoras(dialog.oldTotalAgoras),
+                    formatAgoras(dialog.newTotalAgoras),
+                ),
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = !dialog.isSubmitting) {
+                if (dialog.isSubmitting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.height(18.dp),
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Text(stringResource(R.string.fund_dialog_confirm_button))
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !dialog.isSubmitting) {
+                Text(stringResource(R.string.fund_dialog_cancel))
+            }
+        },
+    )
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Previews
 // ──────────────────────────────────────────────────────────────────────────────
@@ -1044,8 +1200,9 @@ private fun FundListPreview_Populated() {
                 totalAgoras = 1_000_000L,
             ),
             onBack = {}, onCreate = {}, onSelectFund = {}, onRename = {}, onDelete = {},
-            onDeposit = {}, onWithdraw = {}, onTransfer = {},
+            onDeposit = {}, onWithdraw = {}, onTransfer = {}, onRevalue = {},
             onDialogNameChange = {}, onDialogAmountChange = {},
+            onDialogRevalueAmountChange = {},
             onDialogTransferDestinationChange = {},
             onDialogConfirm = {}, onDialogDismiss = {}, onConfirmDelete = {},
             onRetry = {}, onSortModeChange = {}, onMoveUp = {}, onMoveDown = {},
@@ -1060,8 +1217,9 @@ private fun FundListPreview_Empty() {
         FundListContent(
             state = FundListUiState(portfolioName = "תיק ריק"),
             onBack = {}, onCreate = {}, onSelectFund = {}, onRename = {}, onDelete = {},
-            onDeposit = {}, onWithdraw = {}, onTransfer = {},
+            onDeposit = {}, onWithdraw = {}, onTransfer = {}, onRevalue = {},
             onDialogNameChange = {}, onDialogAmountChange = {},
+            onDialogRevalueAmountChange = {},
             onDialogTransferDestinationChange = {},
             onDialogConfirm = {}, onDialogDismiss = {}, onConfirmDelete = {},
             onRetry = {}, onSortModeChange = {}, onMoveUp = {}, onMoveDown = {},
@@ -1082,8 +1240,9 @@ private fun FundListPreview_CustomMode() {
                 selectedFundId = "f2",
             ),
             onBack = {}, onCreate = {}, onSelectFund = {}, onRename = {}, onDelete = {},
-            onDeposit = {}, onWithdraw = {}, onTransfer = {},
+            onDeposit = {}, onWithdraw = {}, onTransfer = {}, onRevalue = {},
             onDialogNameChange = {}, onDialogAmountChange = {},
+            onDialogRevalueAmountChange = {},
             onDialogTransferDestinationChange = {},
             onDialogConfirm = {}, onDialogDismiss = {}, onConfirmDelete = {},
             onRetry = {}, onSortModeChange = {}, onMoveUp = {}, onMoveDown = {},
@@ -1103,8 +1262,9 @@ private fun FundListPreview_CreateDialog() {
                 dialog = FundDialog.CreateInput(name = "מניות נוספות", amountText = "1500.50"),
             ),
             onBack = {}, onCreate = {}, onSelectFund = {}, onRename = {}, onDelete = {},
-            onDeposit = {}, onWithdraw = {}, onTransfer = {},
+            onDeposit = {}, onWithdraw = {}, onTransfer = {}, onRevalue = {},
             onDialogNameChange = {}, onDialogAmountChange = {},
+            onDialogRevalueAmountChange = {},
             onDialogTransferDestinationChange = {},
             onDialogConfirm = {}, onDialogDismiss = {}, onConfirmDelete = {},
             onRetry = {}, onSortModeChange = {}, onMoveUp = {}, onMoveDown = {},
@@ -1124,8 +1284,31 @@ private fun FundListPreview_DepositDialog() {
                 dialog = FundDialog.DepositInput(target = sampleFunds[0], amountText = "250.00"),
             ),
             onBack = {}, onCreate = {}, onSelectFund = {}, onRename = {}, onDelete = {},
-            onDeposit = {}, onWithdraw = {}, onTransfer = {},
+            onDeposit = {}, onWithdraw = {}, onTransfer = {}, onRevalue = {},
             onDialogNameChange = {}, onDialogAmountChange = {},
+            onDialogRevalueAmountChange = {},
+            onDialogTransferDestinationChange = {},
+            onDialogConfirm = {}, onDialogDismiss = {}, onConfirmDelete = {},
+            onRetry = {}, onSortModeChange = {}, onMoveUp = {}, onMoveDown = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, locale = "he")
+@Composable
+private fun FundListPreview_RevalueDialog() {
+    VirtualFundsTheme {
+        FundListContent(
+            state = FundListUiState(
+                portfolioName = "פנסיה",
+                funds = sampleFunds,
+                totalAgoras = 1_000_000L,
+                dialog = FundDialog.RevalueInput(newTotalText = "12000.00"),
+            ),
+            onBack = {}, onCreate = {}, onSelectFund = {}, onRename = {}, onDelete = {},
+            onDeposit = {}, onWithdraw = {}, onTransfer = {}, onRevalue = {},
+            onDialogNameChange = {}, onDialogAmountChange = {},
+            onDialogRevalueAmountChange = {},
             onDialogTransferDestinationChange = {},
             onDialogConfirm = {}, onDialogDismiss = {}, onConfirmDelete = {},
             onRetry = {}, onSortModeChange = {}, onMoveUp = {}, onMoveDown = {},
@@ -1150,8 +1333,9 @@ private fun FundListPreview_TransferDialog() {
                 ),
             ),
             onBack = {}, onCreate = {}, onSelectFund = {}, onRename = {}, onDelete = {},
-            onDeposit = {}, onWithdraw = {}, onTransfer = {},
+            onDeposit = {}, onWithdraw = {}, onTransfer = {}, onRevalue = {},
             onDialogNameChange = {}, onDialogAmountChange = {},
+            onDialogRevalueAmountChange = {},
             onDialogTransferDestinationChange = {},
             onDialogConfirm = {}, onDialogDismiss = {}, onConfirmDelete = {},
             onRetry = {}, onSortModeChange = {}, onMoveUp = {}, onMoveDown = {},
