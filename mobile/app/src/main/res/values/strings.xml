@@ -85,6 +85,7 @@
     <string name="fund_list_cd_sort">סדר תצוגה</string>
     <string name="fund_list_cd_move_up">העברה למעלה</string>
     <string name="fund_list_cd_move_down">העברה למטה</string>
+    <string name="fund_list_cd_history">היסטוריית תנועות</string>
 
     <!-- Header total label, e.g. "סך הכל: 1,234.56 ₪". %1$s is the formatted amount. -->
     <string name="fund_list_total_label">סך הכל: %1$s</string>
@@ -205,4 +206,49 @@
     <string name="fund_error_revalue_would_zero_fund">השווי החדש קיצוני מדי — אחת הקרנות תאבד את חלקה לחלוטין.</string>
     <string name="fund_error_total_mismatch">שגיאה בחישוב העדכון. נסה שוב.</string>
     <string name="fund_error_revalue_generic">שגיאה בעדכון שווי התיק. נסה שוב מאוחר יותר.</string>
+
+    <!-- ========== Transaction history (E7.6, PR-7) ========== -->
+    <!-- Read-only history feed. Wording mirrors desktop TransactionHistoryViewModel.cs /
+         PortfolioWindow.xaml. Type labels themselves live in :domain (TransactionTypeLabels). -->
+
+    <!-- Screen chrome -->
+    <string name="history_title">היסטוריית תנועות</string>
+    <string name="history_cd_back">חזרה</string>
+    <string name="history_error_load">שגיאה בטעינת ההיסטוריה. נסה שוב מאוחר יותר.</string>
+    <string name="history_retry">נסה שוב</string>
+    <string name="history_empty">אין עדיין תנועות בתיק זה.</string>
+    <string name="history_empty_filtered">אין תנועות התואמות את הסינון.</string>
+
+    <!-- Filter bar (date range, fund, type) -->
+    <string name="history_filter_from">מתאריך</string>
+    <string name="history_filter_to">עד תאריך</string>
+    <string name="history_filter_fund">קרן</string>
+    <string name="history_filter_fund_all">כל הקרנות</string>
+    <string name="history_filter_type">סוג</string>
+    <string name="history_filter_type_all">כל הסוגים</string>
+    <string name="history_filter_clear">נקה סינון</string>
+    <string name="history_cd_clear_date">נקה תאריך</string>
+
+    <!-- Date picker dialog buttons -->
+    <string name="history_dialog_ok">אישור</string>
+    <string name="history_dialog_cancel">ביטול</string>
+
+    <!-- Detail row labels: "לפני: X · שינוי: ±Y · אחרי: Z" -->
+    <string name="history_detail_before">לפני: </string>
+    <string name="history_detail_change">שינוי: </string>
+    <string name="history_detail_after">אחרי: </string>
+
+    <!-- Undo (E6.12). Wording mirrors desktop TransactionHistoryViewModel.cs. -->
+    <string name="history_undo_button">↩ בטל פעולה</string>
+    <string name="history_undo_dialog_title">ביטול פעולה</string>
+    <!-- %1$s is the Hebrew transaction-type label, e.g. "הפקדה". -->
+    <string name="history_undo_dialog_message">האם לבטל את הפעולה \"%1$s\"?</string>
+    <string name="history_undo_dialog_confirm">כן, בטל</string>
+    <string name="history_undo_dialog_cancel">לא</string>
+
+    <!-- Undo errors -->
+    <string name="history_error_undo_negative_balance">לא ניתן לבטל — הפעולה תגרום ליתרה שלילית באחת הקרנות.</string>
+    <string name="history_error_undo_portfolio_closed">לא ניתן לבצע פעולה בתיק סגור.</string>
+    <string name="history_error_undo_not_found">אחת הקרנות שהושפעו מהפעולה לא נמצאה.</string>
+    <string name="history_error_undo_generic">שגיאה בביטול הפעולה. נסה שוב מאוחר יותר.</string>
 </resources>

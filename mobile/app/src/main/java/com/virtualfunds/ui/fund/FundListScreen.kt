@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -79,6 +80,7 @@ fun FundListScreen(
     portfolioId: String,
     portfolioName: String,
     onBack: () -> Unit,
+    onOpenHistory: () -> Unit,
     // hiltViewModel() pulls the ViewModel from Hilt's generated factory. SavedStateHandle is
     // populated by Navigation Compose with the route arguments (portfolioId, portfolioName),
     // which the VM reads via `toRoute<Routes.FundList>()`. The `portfolioId`/`portfolioName`
@@ -92,6 +94,7 @@ fun FundListScreen(
     FundListContent(
         state = state,
         onBack = onBack,
+        onOpenHistory = onOpenHistory,
         onCreate = viewModel::onCreateClick,
         onSelectFund = viewModel::onSelectFund,
         onRename = viewModel::onRenameClick,
@@ -119,6 +122,9 @@ fun FundListScreen(
 private fun FundListContent(
     state: FundListUiState,
     onBack: () -> Unit,
+    // Defaulted to {} so the @Preview call sites below don't each need to pass it; the real
+    // call site (FundListScreen) always supplies the navigation lambda.
+    onOpenHistory: () -> Unit = {},
     onCreate: () -> Unit,
     onSelectFund: (String?) -> Unit,
     onRename: (FundListItem) -> Unit,
@@ -173,6 +179,15 @@ private fun FundListContent(
                     }
                 },
                 actions = {
+                    // Opens the read-only transaction history for this portfolio (PR-7, E7.6).
+                    IconButton(onClick = onOpenHistory) {
+                        // AutoMirrored "list" icon — flips correctly under RTL; core icon set
+                        // (no material-icons-extended dependency, so no dedicated History icon).
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.List,
+                            contentDescription = stringResource(R.string.fund_list_cd_history),
+                        )
+                    }
                     SortMenu(
                         current = state.sortMode,
                         onChange = onSortModeChange,

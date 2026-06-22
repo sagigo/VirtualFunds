@@ -16,6 +16,7 @@ import androidx.navigation.toRoute
 import com.virtualfunds.domain.auth.AuthState
 import com.virtualfunds.ui.auth.AuthScreen
 import com.virtualfunds.ui.fund.FundListScreen
+import com.virtualfunds.ui.history.TransactionHistoryScreen
 import com.virtualfunds.ui.portfolio.PortfolioListScreen
 
 /**
@@ -76,6 +77,23 @@ private fun SignedInNavHost() {
         composable<Routes.FundList> { backStackEntry ->
             val route: Routes.FundList = backStackEntry.toRoute()
             FundListScreen(
+                portfolioId = route.portfolioId,
+                portfolioName = route.portfolioName,
+                onBack = { navController.popBackStack() },
+                onOpenHistory = {
+                    navController.navigate(
+                        Routes.TransactionHistory(
+                            portfolioId = route.portfolioId,
+                            portfolioName = route.portfolioName,
+                        ),
+                    )
+                },
+            )
+        }
+
+        composable<Routes.TransactionHistory> { backStackEntry ->
+            val route: Routes.TransactionHistory = backStackEntry.toRoute()
+            TransactionHistoryScreen(
                 portfolioId = route.portfolioId,
                 portfolioName = route.portfolioName,
                 onBack = { navController.popBackStack() },

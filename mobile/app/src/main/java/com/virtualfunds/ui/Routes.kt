@@ -34,4 +34,17 @@ object Routes {
         val portfolioId: String,
         val portfolioName: String,
     )
+
+    /**
+     * The immutable transaction history for a specific portfolio (PR-7, E7.6).
+     *
+     * @param portfolioId UUID string identifying the portfolio whose history is shown.
+     * @param portfolioName Human-readable name shown in the top bar, passed alongside the id so
+     *   the screen renders its title immediately without an extra "load portfolio" round-trip.
+     */
+    @Serializable
+    data class TransactionHistory(
+        val portfolioId: String,
+        val portfolioName: String,
+    )
 }
