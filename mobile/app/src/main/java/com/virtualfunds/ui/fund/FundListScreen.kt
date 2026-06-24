@@ -81,6 +81,7 @@ fun FundListScreen(
     portfolioName: String,
     onBack: () -> Unit,
     onOpenHistory: () -> Unit,
+    onOpenScheduledDeposits: () -> Unit,
     // hiltViewModel() pulls the ViewModel from Hilt's generated factory. SavedStateHandle is
     // populated by Navigation Compose with the route arguments (portfolioId, portfolioName),
     // which the VM reads via `toRoute<Routes.FundList>()`. The `portfolioId`/`portfolioName`
@@ -95,6 +96,7 @@ fun FundListScreen(
         state = state,
         onBack = onBack,
         onOpenHistory = onOpenHistory,
+        onOpenScheduledDeposits = onOpenScheduledDeposits,
         onCreate = viewModel::onCreateClick,
         onSelectFund = viewModel::onSelectFund,
         onRename = viewModel::onRenameClick,
@@ -122,9 +124,10 @@ fun FundListScreen(
 private fun FundListContent(
     state: FundListUiState,
     onBack: () -> Unit,
-    // Defaulted to {} so the @Preview call sites below don't each need to pass it; the real
-    // call site (FundListScreen) always supplies the navigation lambda.
+    // Defaulted to {} so the @Preview call sites below don't each need to pass them; the real
+    // call site (FundListScreen) always supplies the navigation lambdas.
     onOpenHistory: () -> Unit = {},
+    onOpenScheduledDeposits: () -> Unit = {},
     onCreate: () -> Unit,
     onSelectFund: (String?) -> Unit,
     onRename: (FundListItem) -> Unit,
@@ -192,10 +195,12 @@ private fun FundListContent(
                         current = state.sortMode,
                         onChange = onSortModeChange,
                     )
-                    // Top-bar overflow menu hosts portfolio-level actions (not per-fund).
-                    // Revaluation lives here today; future PRs will add CSV export and
-                    // scheduled-deposit management to the same menu.
-                    PortfolioActionsMenu(onRevalue = onRevalue)
+                    // Top-bar overflow menu hosts portfolio-level actions (not per-fund):
+                    // revaluation and scheduled-deposit management. CSV export joins here later.
+                    PortfolioActionsMenu(
+                        onRevalue = onRevalue,
+                        onOpenScheduledDeposits = onOpenScheduledDeposits,
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -312,6 +317,7 @@ private fun FundListContent(
 @Composable
 private fun PortfolioActionsMenu(
     onRevalue: () -> Unit,
+    onOpenScheduledDeposits: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -330,6 +336,13 @@ private fun PortfolioActionsMenu(
                 onClick = {
                     expanded = false
                     onRevalue()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.fund_action_scheduled_deposits)) },
+                onClick = {
+                    expanded = false
+                    onOpenScheduledDeposits()
                 },
             )
         }

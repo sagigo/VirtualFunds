@@ -3,6 +3,7 @@ package com.virtualfunds.domain
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZonedDateTime
 
 /**
@@ -75,5 +76,35 @@ class IsraelTimeHelperTest : FunSpec({
         israelTime.dayOfMonth shouldBe 11
         israelTime.hour shouldBe 0
         israelTime.minute shouldBe 30
+    }
+
+    // ── israelDateTimeToUtc (OneTime conversion, E8.12) ──────────────────────
+
+    test("OneTime date+time in January (IST = UTC+2) converts to UTC") {
+        // 09:00 (540 min) on 2026-01-15 Israel time → 07:00 UTC (winter, UTC+2).
+        val utc = israelDateTimeToUtc(LocalDate.of(2026, 1, 15), 9 * 60)
+        utc shouldBe Instant.parse("2026-01-15T07:00:00Z")
+    }
+
+    test("OneTime date+time in July (IDT = UTC+3) converts to UTC") {
+        // 09:00 (540 min) on 2026-07-15 Israel time → 06:00 UTC (summer, UTC+3).
+        val utc = israelDateTimeToUtc(LocalDate.of(2026, 7, 15), 9 * 60)
+        utc shouldBe Instant.parse("2026-07-15T06:00:00Z")
+    }
+
+    test("OneTime conversion round-trips back to the same Israel wall-clock") {
+        val date = LocalDate.of(2026, 5, 20)
+        val minutes = 14 * 60 + 30 // 14:30
+        val israel = israelDateTimeToUtc(date, minutes).toIsraelTime()
+        israel.toLocalDate() shouldBe date
+        israel.hour shouldBe 14
+        israel.minute shouldBe 30
+    }
+
+    // ── formatIsraelDateTime ─────────────────────────────────────────────────
+
+    test("formatIsraelDateTime renders dd/MM/yyyy HH:mm in Israel time") {
+        // 2026-01-15 07:00 UTC → 09:00 Israel (UTC+2).
+        formatIsraelDateTime(Instant.parse("2026-01-15T07:00:00Z")) shouldBe "15/01/2026 09:00"
     }
 })

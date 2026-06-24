@@ -251,4 +251,103 @@
     <string name="history_error_undo_portfolio_closed">לא ניתן לבצע פעולה בתיק סגור.</string>
     <string name="history_error_undo_not_found">אחת הקרנות שהושפעו מהפעולה לא נמצאה.</string>
     <string name="history_error_undo_generic">שגיאה בביטול הפעולה. נסה שוב מאוחר יותר.</string>
+
+    <!-- ========== Scheduled deposits (E8, PR-8) ========== -->
+    <!-- Wording mirrors desktop ScheduledDepositsViewModel.cs / ScheduledDepositFormDialog and
+         the spec's English-Hebrew glossary (Appendix A). All schedule times are Israel time
+         (Asia/Jerusalem) per E2.1 / E8.3. -->
+
+    <!-- Entry point from the fund-list overflow menu. -->
+    <string name="fund_action_scheduled_deposits">הפקדות מתוזמנות</string>
+
+    <!-- List screen chrome -->
+    <string name="sd_title">הפקדות מתוזמנות</string>
+    <string name="sd_cd_back">חזרה</string>
+    <string name="sd_empty">עדיין לא הוגדרו הפקדות מתוזמנות. לחץ על + כדי להוסיף.</string>
+    <string name="sd_error_load">שגיאה בטעינת ההפקדות המתוזמנות. נסה שוב מאוחר יותר.</string>
+    <string name="sd_retry">נסה שוב</string>
+    <string name="sd_cd_add">הפקדה מתוזמנת חדשה</string>
+    <string name="sd_need_fund_first">יש ליצור קרן אחת לפחות לפני הוספת הפקדה מתוזמנת.</string>
+
+    <!-- Row content + actions -->
+    <string name="sd_cd_row_actions">פעולות להפקדה</string>
+    <string name="sd_action_edit">עריכה</string>
+    <string name="sd_action_enable">הפעלה</string>
+    <string name="sd_action_disable">השבתה</string>
+    <string name="sd_action_delete">מחיקה</string>
+    <string name="sd_status_enabled">מופעל</string>
+    <string name="sd_status_disabled">מושבת</string>
+    <!-- "קרן: <fund>". %1$s is the target fund name. -->
+    <string name="sd_row_fund_label">קרן: %1$s</string>
+    <!-- "הרצה הבאה: dd/MM/yyyy HH:mm". %1$s is the formatted Israel-time next run. -->
+    <string name="sd_next_run_label">הרצה הבאה: %1$s</string>
+
+    <!-- Schedule kind labels (E8.2) — from Appendix A. -->
+    <string name="sd_kind_one_time">חד פעמי</string>
+    <string name="sd_kind_daily">יומי</string>
+    <string name="sd_kind_weekly">שבועי</string>
+    <string name="sd_kind_monthly">חודשי</string>
+
+    <!-- Schedule summary lines (mirror desktop ScheduledDepositListItem.FormattedSchedule).
+         %1$s/%2$s are the variable parts (weekdays, time, date). -->
+    <string name="sd_schedule_daily">יומי — %1$s</string>
+    <string name="sd_schedule_weekly">שבועי — %1$s — %2$s</string>
+    <string name="sd_schedule_monthly">חודשי — יום %1$d — %2$s</string>
+    <string name="sd_schedule_one_time">חד פעמי — %1$s</string>
+
+    <!-- Hebrew weekday abbreviations, Sunday..Saturday (bit 0..6 of weekday_mask, E4.3.5). -->
+    <string-array name="sd_weekday_abbreviations">
+        <item>א׳</item>
+        <item>ב׳</item>
+        <item>ג׳</item>
+        <item>ד׳</item>
+        <item>ה׳</item>
+        <item>ו׳</item>
+        <item>ש׳</item>
+    </string-array>
+
+    <!-- Delete confirmation (section 4.2). %1$s is the deposit name. -->
+    <string name="sd_delete_title">מחיקת הפקדה מתוזמנת</string>
+    <string name="sd_delete_message">האם אתה בטוח שברצונך למחוק את ההפקדה \"%1$s\"?</string>
+    <string name="sd_delete_confirm">מחק</string>
+
+    <!-- Generic dialog buttons (time/date pickers, confirmations). -->
+    <string name="sd_dialog_ok">אישור</string>
+    <string name="sd_dialog_cancel">ביטול</string>
+
+    <!-- Create / edit full-screen form -->
+    <string name="sd_form_create_title">הפקדה מתוזמנת חדשה</string>
+    <string name="sd_form_edit_title">עריכת הפקדה מתוזמנת</string>
+    <string name="sd_form_cd_cancel">ביטול</string>
+    <string name="sd_form_save">שמירה</string>
+    <string name="sd_form_name_label">שם</string>
+    <string name="sd_form_fund_label">קרן יעד</string>
+    <string name="sd_form_fund_placeholder">בחר קרן</string>
+    <string name="sd_form_amount_label">סכום ₪</string>
+    <string name="sd_form_amount_hint">חייב להיות גדול מאפס</string>
+    <string name="sd_form_kind_label">תזמון</string>
+    <string name="sd_form_time_label">שעה</string>
+    <string name="sd_form_cd_pick_time">בחר שעה</string>
+    <string name="sd_form_weekdays_label">ימים בשבוע</string>
+    <string name="sd_form_day_of_month_label">יום בחודש</string>
+    <string name="sd_form_date_label">תאריך</string>
+    <string name="sd_form_cd_pick_date">בחר תאריך</string>
+    <string name="sd_form_note_label">הערה (אופציונלי)</string>
+    <string name="sd_form_enabled_label">מופעל</string>
+    <string name="sd_form_timezone_hint">כל הזמנים מחושבים לפי שעון ישראל.</string>
+
+    <!-- Form validation + server errors (mirror desktop wording). -->
+    <string name="sd_error_empty_name">נא להזין שם.</string>
+    <string name="sd_error_no_fund">נא לבחור קרן.</string>
+    <string name="sd_error_amount_required">נא להזין סכום.</string>
+    <string name="sd_error_no_weekday">נא לבחור לפחות יום אחד בשבוע.</string>
+    <string name="sd_error_no_date">נא לבחור תאריך.</string>
+    <string name="sd_error_invalid_schedule_fields">שדות התזמון אינם תקינים.</string>
+    <string name="sd_error_invalid_schedule_kind">סוג תזמון לא חוקי.</string>
+    <string name="sd_error_amount_positive_server">הסכום חייב להיות חיובי.</string>
+    <string name="sd_error_not_found">ההפקדה או הקרן לא נמצאה.</string>
+    <string name="sd_error_create_generic">שגיאה ביצירת ההפקדה המתוזמנת. נסה שוב מאוחר יותר.</string>
+    <string name="sd_error_update_generic">שגיאה בעדכון ההפקדה המתוזמנת. נסה שוב מאוחר יותר.</string>
+    <string name="sd_error_delete_generic">שגיאה במחיקת ההפקדה המתוזמנת. נסה שוב מאוחר יותר.</string>
+    <string name="sd_error_toggle_generic">שגיאה בשינוי מצב ההפקדה. נסה שוב מאוחר יותר.</string>
 </resources>

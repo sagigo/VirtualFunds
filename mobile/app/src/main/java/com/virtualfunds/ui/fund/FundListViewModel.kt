@@ -249,9 +249,10 @@ class FundListViewModel @Inject constructor(
     val state: StateFlow<FundListUiState> = _state.asStateFlow()
 
     init {
-        // Inform the sync coordinator so scheduled-deposit execution can fire on the next
-        // app resume (E8.4 trigger — relevant once PR-8 lands but the hook is harmless now).
-        syncCoordinator.setActivePortfolioId(portfolioId)
+        // Entering a portfolio: mark it active AND run any due scheduled deposits right now
+        // (E8.4 — mirrors the desktop portfolio-window-load trigger). If something executes,
+        // the coordinator emits a PostMutation we collect below, refreshing balances.
+        syncCoordinator.onPortfolioEntered(portfolioId)
 
         refresh()
 

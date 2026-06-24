@@ -18,6 +18,7 @@ import com.virtualfunds.ui.auth.AuthScreen
 import com.virtualfunds.ui.fund.FundListScreen
 import com.virtualfunds.ui.history.TransactionHistoryScreen
 import com.virtualfunds.ui.portfolio.PortfolioListScreen
+import com.virtualfunds.ui.scheduled.ScheduledDepositsScreen
 
 /**
  * The root of the app's Composable tree. Implements the auth state machine from E3.6:
@@ -88,12 +89,29 @@ private fun SignedInNavHost() {
                         ),
                     )
                 },
+                onOpenScheduledDeposits = {
+                    navController.navigate(
+                        Routes.ScheduledDeposits(
+                            portfolioId = route.portfolioId,
+                            portfolioName = route.portfolioName,
+                        ),
+                    )
+                },
             )
         }
 
         composable<Routes.TransactionHistory> { backStackEntry ->
             val route: Routes.TransactionHistory = backStackEntry.toRoute()
             TransactionHistoryScreen(
+                portfolioId = route.portfolioId,
+                portfolioName = route.portfolioName,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable<Routes.ScheduledDeposits> { backStackEntry ->
+            val route: Routes.ScheduledDeposits = backStackEntry.toRoute()
+            ScheduledDepositsScreen(
                 portfolioId = route.portfolioId,
                 portfolioName = route.portfolioName,
                 onBack = { navController.popBackStack() },

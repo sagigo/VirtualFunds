@@ -47,4 +47,17 @@ object Routes {
         val portfolioId: String,
         val portfolioName: String,
     )
+
+    /**
+     * Scheduled-deposit management for a specific portfolio (PR-8, E8).
+     *
+     * @param portfolioId UUID string identifying the portfolio whose scheduled deposits are managed.
+     * @param portfolioName Human-readable name shown in the top bar, passed alongside the id so the
+     *   screen renders its title immediately without an extra "load portfolio" round-trip.
+     */
+    @Serializable
+    data class ScheduledDeposits(
+        val portfolioId: String,
+        val portfolioName: String,
+    )
 }

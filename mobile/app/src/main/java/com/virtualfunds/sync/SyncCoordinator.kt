@@ -1,5 +1,6 @@
 package com.virtualfunds.sync
 
+import com.virtualfunds.domain.AppResult
 import com.virtualfunds.domain.auth.AuthRepository
 import com.virtualfunds.domain.auth.AuthState
 import com.virtualfunds.domain.repository.DeviceIdStore
@@ -102,6 +103,31 @@ class SyncCoordinator
      */
     fun setActivePortfolioId(portfolioId: String?) {
         activePortfolioId = portfolioId
+    }
+
+    /**
+     * Called when the user opens a portfolio (E8.4 "trigger on app start / on login"). Sets
+     * the portfolio active *and* runs its due scheduled deposits once, immediately — mirroring
+     * the desktop's portfolio-window-load trigger (`PortfolioViewModel.TriggerScheduledDepositExecutionAsync`).
+     *
+     * Without this, a freshly-opened portfolio would not execute due deposits until the next
+     * app resume or mutation. If anything executed, we emit [SyncTrigger.PostMutation] so the
+     * fund list refreshes its balances — same as the desktop's "if executedCount > 0, reload".
+     * Failures are swallowed: execution is best-effort (the next trigger retries) and the
+     * database guarantees exactly-once (E8.5) regardless of how often we trigger.
+     */
+    fun onPortfolioEntered(portfolioId: String) {
+        activePortfolioId = portfolioId
+        scope.launch {
+            triggerMutex.withLock {
+                if (!isSignedIn()) return@withLock
+                val deviceId = deviceIdStore.getOrCreate()
+                val result = scheduledDepositRepository.executeDueDeposits(portfolioId, deviceId)
+                if (result is AppResult.Success && result.value > 0) {
+                    _events.emit(SyncTrigger.PostMutation(portfolioId))
+                }
+            }
+        }
     }
 
     /** Called from [com.virtualfunds.MainActivity.onStart] (lifecycle hook). */

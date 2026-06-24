@@ -80,6 +80,7 @@ class FundListViewModelTest : FunSpec() {
         beforeTest {
             Dispatchers.setMain(UnconfinedTestDispatcher())
             every { syncCoordinator.events } returns syncEvents
+            justRun { syncCoordinator.onPortfolioEntered(any()) }
             justRun { syncCoordinator.setActivePortfolioId(any()) }
             justRun { syncCoordinator.triggerPostMutation(any()) }
         }
@@ -128,7 +129,7 @@ class FundListViewModelTest : FunSpec() {
             vm.state.value.funds.size shouldBe 3
         }
 
-        test("VM informs the sync coordinator which portfolio is active on init and clears on clear") {
+        test("VM triggers scheduled-deposit execution on portfolio entry and clears active on clear") {
             coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(emptyList())
 
             val vm = buildVm()
@@ -138,7 +139,8 @@ class FundListViewModelTest : FunSpec() {
             onCleared.isAccessible = true
             onCleared.invoke(vm)
 
-            coVerify { syncCoordinator.setActivePortfolioId(portfolioId) }
+            // Entry runs due deposits for this portfolio (E8.4); leaving clears the active slot.
+            coVerify { syncCoordinator.onPortfolioEntered(portfolioId) }
             coVerify { syncCoordinator.setActivePortfolioId(null) }
         }
 
