@@ -72,6 +72,7 @@ import com.virtualfunds.domain.model.ScheduleKind
 import com.virtualfunds.ui.theme.VirtualFundsTheme
 import java.time.Instant
 import java.time.LocalDate
+import java.util.Locale
 
 /** Milliseconds in a calendar day — converts between epoch-day and the date picker's UTC millis. */
 private const val MILLIS_PER_DAY = 86_400_000L
@@ -557,7 +558,9 @@ private fun CompositionLtr(content: @Composable () -> Unit) {
 /** Formats an Israel-local epoch-day as "dd/MM/yyyy" for the date field. */
 private fun formatEpochDay(epochDay: Long): String {
     val date = LocalDate.ofEpochDay(epochDay)
-    return "%02d/%02d/%04d".format(date.dayOfMonth, date.monthValue, date.year)
+    // Locale.ROOT keeps the date digits Western (ASCII) regardless of the device locale,
+    // consistent with the rest of the app's number formatting (formatAgoras).
+    return String.format(Locale.ROOT, "%02d/%02d/%04d", date.dayOfMonth, date.monthValue, date.year)
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

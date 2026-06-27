@@ -6,6 +6,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /**
  * Israel timezone for all schedule computations (E8.3, E8.12).
@@ -38,7 +39,9 @@ fun formatIsraelDateTime(instant: Instant): String =
 fun formatTimeOfDay(minutes: Int): String {
     val hours = minutes / 60
     val mins = minutes % 60
-    return "%02d:%02d".format(hours, mins)
+    // Locale.ROOT keeps digits Western (ASCII) regardless of the device locale, matching
+    // formatAgoras and the project's locale-independent number-formatting rule.
+    return String.format(Locale.ROOT, "%02d:%02d", hours, mins)
 }
 
 /**

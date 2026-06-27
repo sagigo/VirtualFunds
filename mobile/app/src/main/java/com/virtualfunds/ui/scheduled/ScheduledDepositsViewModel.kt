@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
+import java.util.Locale
 import javax.inject.Inject
 
 /** Default time-of-day for a new schedule: 09:00 Israel time (mirrors the desktop form default). */
@@ -415,7 +416,9 @@ class ScheduledDepositsViewModel @Inject constructor(
     private fun agorasToEditableShekels(agoras: Long): String {
         val whole = agoras / 100
         val frac = (agoras % 100).toInt()
-        return "%d.%02d".format(whole, frac)
+        // Locale.ROOT forces ASCII digits + a '.' separator so the value round-trips cleanly
+        // through parseShekelInput on save, regardless of the device locale (matches formatAgoras).
+        return String.format(Locale.ROOT, "%d.%02d", whole, frac)
     }
 
     // ── Error → string-resource mapping (mirrors desktop ScheduledDepositsViewModel wording) ──
