@@ -7,14 +7,19 @@ import com.virtualfunds.R
 import com.virtualfunds.domain.AppError
 import com.virtualfunds.domain.AppResult
 import com.virtualfunds.domain.ShekelParseResult
+import com.virtualfunds.domain.buildPortfolioSnapshotCsv
 import com.virtualfunds.domain.model.FundListItem
 import com.virtualfunds.domain.parseShekelInput
 import com.virtualfunds.domain.repository.FundRepository
 import com.virtualfunds.sync.SyncCoordinator
 import com.virtualfunds.sync.SyncTrigger
+import com.virtualfunds.ui.export.CsvExportEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -248,6 +253,14 @@ class FundListViewModel @Inject constructor(
     private val _state = MutableStateFlow(FundListUiState(portfolioName = portfolioName))
     val state: StateFlow<FundListUiState> = _state.asStateFlow()
 
+    /**
+     * One-shot portfolio-snapshot CSV export events (E9.2). The screen collects these to drive the
+     * system save picker (see [com.virtualfunds.ui.export.CsvExportEffect]). A SharedFlow, not
+     * state, so the picker launches once per tap rather than re-firing on recomposition.
+     */
+    private val _csvExport = MutableSharedFlow<CsvExportEvent>(extraBufferCapacity = 1)
+    val csvExport: SharedFlow<CsvExportEvent> = _csvExport.asSharedFlow()
+
     init {
         // Entering a portfolio: mark it active AND run any due scheduled deposits right now
         // (E8.4 — mirrors the desktop portfolio-window-load trigger). If something executes,
@@ -278,6 +291,23 @@ class FundListViewModel @Inject constructor(
     // ── Public actions ──────────────────────────────────────────────────────────
 
     fun onRetry() = refresh()
+
+    /**
+     * Export the current fund list as a portfolio-snapshot CSV (E9.2). Uses the funds exactly as
+     * shown — current sort order included (E9.2 "current UI sort order") — and the already-derived
+     * allocation percentages. Emits [CsvExportEvent.NoData] for an empty portfolio so the screen
+     * shows a message rather than writing a header-only file.
+     */
+    fun onExportSnapshotClick() {
+        val funds = _state.value.funds
+        if (funds.isEmpty()) {
+            _csvExport.tryEmit(CsvExportEvent.NoData)
+            return
+        }
+        _csvExport.tryEmit(
+            CsvExportEvent.Ready(buildPortfolioSnapshotCsv(portfolioId, portfolioName, funds)),
+        )
+    }
 
     fun onCreateClick() {
         _state.update { it.copy(dialog = FundDialog.CreateInput()) }

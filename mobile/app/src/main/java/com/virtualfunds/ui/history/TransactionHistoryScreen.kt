@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
@@ -77,6 +78,8 @@ import com.virtualfunds.domain.model.TransactionDetailItem
 import com.virtualfunds.domain.model.TransactionGroup
 import com.virtualfunds.domain.model.TransactionType
 import com.virtualfunds.domain.model.TransactionTypeLabels
+import com.virtualfunds.ui.export.CsvExportEffect
+import com.virtualfunds.ui.export.buildCsvFileName
 import kotlinx.coroutines.flow.distinctUntilChanged
 import java.time.Instant
 import java.time.LocalDate
@@ -104,10 +107,24 @@ fun TransactionHistoryScreen(
     viewModel: TransactionHistoryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Drive the system save picker off the VM's one-shot export events (E9.1). The file-name
+    // prefix is resolved here (stringResource is composition-only); the lambda runs at export time
+    // and stamps the current date via buildCsvFileName.
+    val exportPrefix = stringResource(R.string.export_history_filename_prefix)
+    val portfolioNameForFile = state.portfolioName
+    CsvExportEffect(
+        events = viewModel.csvExport,
+        fileName = { buildCsvFileName(exportPrefix, portfolioNameForFile) },
+        snackbarHostState = snackbarHostState,
+    )
 
     TransactionHistoryContent(
         state = state,
+        snackbarHostState = snackbarHostState,
         onBack = onBack,
+        onExport = viewModel::onExportClick,
         onFromDateChange = viewModel::onFromDateChange,
         onToDateChange = viewModel::onToDateChange,
         onFundFilterChange = viewModel::onFundFilterChange,
@@ -126,7 +143,9 @@ fun TransactionHistoryScreen(
 @Composable
 private fun TransactionHistoryContent(
     state: TransactionHistoryUiState,
+    snackbarHostState: SnackbarHostState,
     onBack: () -> Unit,
+    onExport: () -> Unit = {},
     onFromDateChange: (LocalDate?) -> Unit,
     onToDateChange: (LocalDate?) -> Unit,
     onFundFilterChange: (String?) -> Unit,
@@ -143,7 +162,6 @@ private fun TransactionHistoryContent(
     // we surface it transiently instead of replacing the whole list). When undoErrorRes flips
     // non-zero we show it once, then tell the VM to clear it. getString (not stringResource) is
     // used because we're inside a coroutine effect, not composition.
-    val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     LaunchedEffect(state.undoErrorRes) {
         if (state.undoErrorRes != 0) {
@@ -183,10 +201,24 @@ private fun TransactionHistoryContent(
                         )
                     }
                 },
+                actions = {
+                    // Export the filtered history to CSV (E9.1). A text action ("ייצוא ל-CSV")
+                    // rather than an icon: the core icon set has no export/save glyph, and this
+                    // mirrors the desktop history panel's "CSV" button.
+                    TextButton(
+                        onClick = onExport,
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                        ),
+                    ) {
+                        Text(stringResource(R.string.history_action_export))
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
                 ),
             )
         },

@@ -350,4 +350,22 @@
     <string name="sd_error_update_generic">שגיאה בעדכון ההפקדה המתוזמנת. נסה שוב מאוחר יותר.</string>
     <string name="sd_error_delete_generic">שגיאה במחיקת ההפקדה המתוזמנת. נסה שוב מאוחר יותר.</string>
     <string name="sd_error_toggle_generic">שגיאה בשינוי מצב ההפקדה. נסה שוב מאוחר יותר.</string>
+
+    <!-- ========== CSV export (E9, PR-9) ========== -->
+    <!-- Both exports save to a user-chosen file via the system picker (Storage Access Framework).
+         Wording / file-name prefixes mirror the desktop (TransactionCsvExporter /
+         PortfolioSnapshotCsvExporter and the SaveFileDialog defaults). -->
+
+    <!-- Actions -->
+    <string name="history_action_export">ייצוא ל-CSV</string>
+    <string name="fund_action_export_snapshot">ייצוא תמונת מצב</string>
+
+    <!-- Suggested file-name prefixes (desktop: "היסטוריה_<תיק>_<תאריך>" / "תמונת_מצב_<תיק>_<תאריך>"). -->
+    <string name="export_history_filename_prefix">היסטוריה</string>
+    <string name="export_snapshot_filename_prefix">תמונת_מצב</string>
+
+    <!-- Result feedback (snackbars) -->
+    <string name="export_success">הקובץ נשמר בהצלחה.</string>
+    <string name="export_failure">שגיאה בשמירת הקובץ. נסה שוב מאוחר יותר.</string>
+    <string name="export_no_data">אין נתונים לייצוא.</string>
 </resources>

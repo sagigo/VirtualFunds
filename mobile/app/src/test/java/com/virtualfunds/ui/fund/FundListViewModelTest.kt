@@ -8,9 +8,11 @@ import com.virtualfunds.domain.model.FundListItem
 import com.virtualfunds.domain.repository.FundRepository
 import com.virtualfunds.sync.SyncCoordinator
 import com.virtualfunds.sync.SyncTrigger
+import com.virtualfunds.ui.export.CsvExportEvent
 import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
@@ -18,9 +20,11 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.justRun
 import io.mockk.mockk
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -1013,9 +1017,43 @@ class FundListViewModelTest : FunSpec() {
             vm.state.value.dialog shouldBe FundDialog.None
             coVerify(exactly = 0) { fundRepo.revaluePortfolio(any(), any()) }
         }
+
+        // ── Snapshot CSV export (E9.2) ───────────────────────────────────────
+
+        test("export snapshot with funds emits a Ready event carrying the snapshot CSV") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(sampleFunds)
+            val vm = buildVm()
+
+            val event = vm.captureExport { vm.onExportSnapshotClick() }
+
+            event.shouldBeInstanceOf<CsvExportEvent.Ready>()
+            event.content shouldContain "שם תיק,מזהה תיק,שם קרן,מזהה קרן,יתרה,אחוז הקצאה"
+            // Portfolio context is repeated on each row, and the funds are included.
+            event.content shouldContain portfolioName
+            event.content shouldContain "מניות"
+        }
+
+        test("export snapshot on an empty portfolio emits NoData") {
+            coEvery { fundRepo.getFunds(portfolioId) } returns AppResult.Success(emptyList())
+            val vm = buildVm()
+
+            vm.captureExport { vm.onExportSnapshotClick() } shouldBe CsvExportEvent.NoData
+        }
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
+
+    /**
+     * Subscribes to the VM's one-shot [FundListViewModel.csvExport] flow, runs [action] (which
+     * emits synchronously via the UnconfinedTestDispatcher), and returns the single event.
+     */
+    private fun FundListViewModel.captureExport(action: () -> Unit): CsvExportEvent {
+        val received = mutableListOf<CsvExportEvent>()
+        val job = CoroutineScope(UnconfinedTestDispatcher()).launch { csvExport.collect { received += it } }
+        action()
+        job.cancel()
+        return received.single()
+    }
 
     /**
      * Builds a [FundListViewModel] using the test mocks.

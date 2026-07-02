@@ -39,6 +39,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -64,6 +67,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.virtualfunds.R
 import com.virtualfunds.domain.formatAgoras
 import com.virtualfunds.domain.model.FundListItem
+import com.virtualfunds.ui.export.CsvExportEffect
+import com.virtualfunds.ui.export.buildCsvFileName
 import com.virtualfunds.ui.theme.VirtualFundsTheme
 import java.time.Instant
 
@@ -91,13 +96,25 @@ fun FundListScreen(
     viewModel: FundListViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Drive the system save picker off the VM's one-shot snapshot-export events (E9.2).
+    val exportPrefix = stringResource(R.string.export_snapshot_filename_prefix)
+    val portfolioNameForFile = state.portfolioName
+    CsvExportEffect(
+        events = viewModel.csvExport,
+        fileName = { buildCsvFileName(exportPrefix, portfolioNameForFile) },
+        snackbarHostState = snackbarHostState,
+    )
 
     FundListContent(
         state = state,
+        snackbarHostState = snackbarHostState,
         onBack = onBack,
         onOpenHistory = onOpenHistory,
         onOpenScheduledDeposits = onOpenScheduledDeposits,
         onCreate = viewModel::onCreateClick,
+        onExportSnapshot = viewModel::onExportSnapshotClick,
         onSelectFund = viewModel::onSelectFund,
         onRename = viewModel::onRenameClick,
         onDelete = viewModel::onDeleteClick,
@@ -123,12 +140,16 @@ fun FundListScreen(
 @Composable
 private fun FundListContent(
     state: FundListUiState,
+    // Defaulted so the @Preview call sites don't each need to supply it; the real call site
+    // (FundListScreen) passes a remembered instance that backs the export-result snackbars.
+    snackbarHostState: SnackbarHostState = SnackbarHostState(),
     onBack: () -> Unit,
     // Defaulted to {} so the @Preview call sites below don't each need to pass them; the real
     // call site (FundListScreen) always supplies the navigation lambdas.
     onOpenHistory: () -> Unit = {},
     onOpenScheduledDeposits: () -> Unit = {},
     onCreate: () -> Unit,
+    onExportSnapshot: () -> Unit = {},
     onSelectFund: (String?) -> Unit,
     onRename: (FundListItem) -> Unit,
     onDelete: (FundListItem) -> Unit,
@@ -149,6 +170,7 @@ private fun FundListContent(
     onMoveDown: () -> Unit,
 ) {
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -196,10 +218,11 @@ private fun FundListContent(
                         onChange = onSortModeChange,
                     )
                     // Top-bar overflow menu hosts portfolio-level actions (not per-fund):
-                    // revaluation and scheduled-deposit management. CSV export joins here later.
+                    // revaluation, scheduled-deposit management, and snapshot CSV export.
                     PortfolioActionsMenu(
                         onRevalue = onRevalue,
                         onOpenScheduledDeposits = onOpenScheduledDeposits,
+                        onExportSnapshot = onExportSnapshot,
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -228,25 +251,37 @@ private fun FundListContent(
                 state.isLoading && state.funds.isEmpty() ->
                     CenteredSpinner()
 
-                state.errorMessageRes != 0 ->
+                // Full-screen error + retry only when there's no data to show — i.e. a genuine
+                // load failure. Operation failures (deposit/withdraw/transfer/revalue/delete)
+                // arrive with the list still populated and are handled by the banner below, so
+                // they don't blow the fund list away behind a misleading "retry" button.
+                state.errorMessageRes != 0 && state.funds.isEmpty() ->
                     ErrorRetry(messageRes = state.errorMessageRes, onRetry = onRetry)
 
                 state.funds.isEmpty() ->
                     EmptyState()
 
                 else ->
-                    FundList(
-                        state = state,
-                        onSelectFund = onSelectFund,
-                        onRename = onRename,
-                        onDelete = onDelete,
-                        onDeposit = onDeposit,
-                        onWithdraw = onWithdraw,
-                        onTransfer = onTransfer,
-                        onMoveUp = onMoveUp,
-                        onMoveDown = onMoveDown,
-                        padding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                    )
+                    Column(Modifier.fillMaxSize()) {
+                        // Non-destructive error banner for operation failures, matching the
+                        // desktop's persistent ErrorMessage text. Clears on the next refresh
+                        // or when the user opens another money-operation dialog.
+                        if (state.errorMessageRes != 0) {
+                            ErrorBanner(messageRes = state.errorMessageRes)
+                        }
+                        FundList(
+                            state = state,
+                            onSelectFund = onSelectFund,
+                            onRename = onRename,
+                            onDelete = onDelete,
+                            onDeposit = onDeposit,
+                            onWithdraw = onWithdraw,
+                            onTransfer = onTransfer,
+                            onMoveUp = onMoveUp,
+                            onMoveDown = onMoveDown,
+                            padding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                        )
+                    }
             }
         }
     }
@@ -318,6 +353,7 @@ private fun FundListContent(
 private fun PortfolioActionsMenu(
     onRevalue: () -> Unit,
     onOpenScheduledDeposits: () -> Unit,
+    onExportSnapshot: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -343,6 +379,13 @@ private fun PortfolioActionsMenu(
                 onClick = {
                     expanded = false
                     onOpenScheduledDeposits()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.fund_action_export_snapshot)) },
+                onClick = {
+                    expanded = false
+                    onExportSnapshot()
                 },
             )
         }
@@ -650,6 +693,26 @@ private fun ErrorRetry(messageRes: Int, onRetry: () -> Unit) {
         Button(onClick = onRetry) {
             Text(stringResource(R.string.fund_list_retry))
         }
+    }
+}
+
+/**
+ * A non-destructive error banner shown above the fund list when an operation fails but the
+ * list is still valid (e.g. an insufficient-balance withdrawal). Unlike [ErrorRetry] it does
+ * not replace the screen content — it mirrors the desktop's persistent ErrorMessage text.
+ */
+@Composable
+private fun ErrorBanner(messageRes: Int) {
+    Surface(
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(
+            text = stringResource(messageRes),
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+        )
     }
 }
 

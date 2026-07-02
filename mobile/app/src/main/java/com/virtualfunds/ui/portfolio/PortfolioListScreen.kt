@@ -32,6 +32,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -159,7 +160,10 @@ private fun PortfolioListContent(
                 state.isLoading && state.portfolios.isEmpty() ->
                     CenteredSpinner()
 
-                state.errorMessageRes != 0 ->
+                // Full-screen error + retry only for a genuine load failure (no data). A
+                // failed close/rename arrives with the list still populated and is shown via
+                // the banner below instead of replacing the whole list.
+                state.errorMessageRes != 0 && state.portfolios.isEmpty() ->
                     ErrorRetry(
                         messageRes = state.errorMessageRes,
                         onRetry = onRetry,
@@ -169,13 +173,21 @@ private fun PortfolioListContent(
                     EmptyState()
 
                 else ->
-                    PortfolioList(
-                        portfolios = state.portfolios,
-                        onOpen = onOpen,
-                        onRename = onRename,
-                        onDelete = onDelete,
-                        padding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                    )
+                    Column(Modifier.fillMaxSize()) {
+                        // Non-destructive error banner for action failures (e.g. close a
+                        // portfolio that was already closed), matching the desktop's persistent
+                        // ErrorMessage text. Clears on the next refresh.
+                        if (state.errorMessageRes != 0) {
+                            ErrorBanner(messageRes = state.errorMessageRes)
+                        }
+                        PortfolioList(
+                            portfolios = state.portfolios,
+                            onOpen = onOpen,
+                            onRename = onRename,
+                            onDelete = onDelete,
+                            padding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                        )
+                    }
             }
         }
     }
@@ -360,6 +372,26 @@ private fun ErrorRetry(messageRes: Int, onRetry: () -> Unit) {
         Button(onClick = onRetry) {
             Text(stringResource(R.string.portfolio_list_retry))
         }
+    }
+}
+
+/**
+ * A non-destructive error banner shown above the portfolio list when an action fails but the
+ * list is still valid. Unlike [ErrorRetry] it does not replace the screen content — it mirrors
+ * the desktop's persistent ErrorMessage text.
+ */
+@Composable
+private fun ErrorBanner(messageRes: Int) {
+    Surface(
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(
+            text = stringResource(messageRes),
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+        )
     }
 }
 

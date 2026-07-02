@@ -1,19 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
+   Controls what Android Auto Backup (cloud) and device-to-device transfer include on API 31+.
+   minSdk is 31, so this file (not the legacy fullBackupContent / backup_rules.xml) is the one
+   Android consults. See https://developer.android.com/about/versions/12/backup-restore#xml-changes
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <!-- The Supabase session / refresh tokens live in EncryptedSharedPreferences
+             (SecureSessionManager.PREFS_FILE_NAME = "vf_secure_session_prefs"). Its master key
+             is held in the Android Keystore and is NOT included in backups, so a restored copy
+             on another device can never be decrypted — backing it up only exposes useless
+             ciphertext. Exclude it. The app is online-only (E1.5), so there is no domain data
+             to back up anyway. -->
+        <exclude domain="sharedpref" path="vf_secure_session_prefs.xml"/>
+        <!-- device_id must be a stable UUID *per installation* (spec E2.3). Restoring it onto a
+             new install would duplicate the id and corrupt scheduled-deposit claim coordination
+             (E8.5, claimed_by_device_id). Let each install generate its own via
+             SharedPrefsDeviceIdStore (PREFS_NAME = "virtual_funds_device"). -->
+        <exclude domain="sharedpref" path="virtual_funds_device.xml"/>
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <!-- Same reasoning as cloud-backup: the Keystore key does not transfer, and device_id
+             must remain per-installation. -->
+        <exclude domain="sharedpref" path="vf_secure_session_prefs.xml"/>
+        <exclude domain="sharedpref" path="virtual_funds_device.xml"/>
     </device-transfer>
-    -->
 </data-extraction-rules>

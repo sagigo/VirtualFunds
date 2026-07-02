@@ -11,16 +11,21 @@ import com.virtualfunds.domain.model.TransactionType
 import com.virtualfunds.domain.repository.FundRepository
 import com.virtualfunds.domain.repository.TransactionRepository
 import com.virtualfunds.sync.SyncCoordinator
+import com.virtualfunds.ui.export.CsvExportEvent
 import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.justRun
 import io.mockk.mockk
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -322,6 +327,52 @@ class TransactionHistoryViewModelTest : FunSpec() {
 
             vm.state.value.undoErrorRes shouldBe 0
         }
+
+        // ── CSV export (E9.1) ─────────────────────────────────────────────────
+
+        test("export with matching history emits a Ready event carrying the CSV header") {
+            val groups = listOf(makeGroup(operationId = "op1", type = TransactionType.FundDeposit))
+            coEvery { repo.getHistory(portfolioId) } returns AppResult.Success(groups)
+            val vm = buildVm()
+
+            val event = vm.captureExport { vm.onExportClick() }
+
+            event.shouldBeInstanceOf<CsvExportEvent.Ready>()
+            event.content shouldContain "תאריך,סוג,סיכום,קרן,סכום,יתרה לפני,יתרה אחרי"
+        }
+
+        test("export with an empty filtered view emits NoData (mirrors desktop 'אין נתונים לייצוא')") {
+            coEvery { repo.getHistory(portfolioId) } returns AppResult.Success(emptyList())
+            val vm = buildVm()
+
+            vm.captureExport { vm.onExportClick() } shouldBe CsvExportEvent.NoData
+        }
+
+        test("export covers the full filtered set, not just the visible page") {
+            // 60 groups → only 50 are displayed (paging), but the export must include all 60.
+            val groups = (1..60).map { makeGroup(operationId = "op$it") }
+            coEvery { repo.getHistory(portfolioId) } returns AppResult.Success(groups)
+            val vm = buildVm()
+            vm.state.value.groups.size shouldBe 50 // one page on screen
+
+            val event = vm.captureExport { vm.onExportClick() }
+
+            event.shouldBeInstanceOf<CsvExportEvent.Ready>()
+            // Each group contributes exactly one "summary op<n>" summary row (details are empty).
+            (event.content.split("summary op").size - 1) shouldBe 60
+        }
+    }
+
+    /**
+     * Subscribes to the VM's one-shot [TransactionHistoryViewModel.csvExport] flow, runs [action]
+     * (which emits synchronously via the UnconfinedTestDispatcher), and returns the single event.
+     */
+    private fun TransactionHistoryViewModel.captureExport(action: () -> Unit): CsvExportEvent {
+        val received = mutableListOf<CsvExportEvent>()
+        val job = CoroutineScope(UnconfinedTestDispatcher()).launch { csvExport.collect { received += it } }
+        action()
+        job.cancel()
+        return received.single()
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

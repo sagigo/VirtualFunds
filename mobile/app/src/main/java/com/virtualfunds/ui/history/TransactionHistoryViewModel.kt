@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.virtualfunds.R
 import com.virtualfunds.domain.AppError
 import com.virtualfunds.domain.AppResult
+import com.virtualfunds.domain.buildTransactionHistoryCsv
 import com.virtualfunds.domain.model.FundFilterOption
 import com.virtualfunds.domain.model.TransactionGroup
 import com.virtualfunds.domain.model.TransactionType
@@ -14,9 +15,13 @@ import com.virtualfunds.domain.model.TransactionTypeLabels
 import com.virtualfunds.domain.repository.FundRepository
 import com.virtualfunds.domain.repository.TransactionRepository
 import com.virtualfunds.sync.SyncCoordinator
+import com.virtualfunds.ui.export.CsvExportEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -120,6 +125,14 @@ class TransactionHistoryViewModel @Inject constructor(
     private val _state = MutableStateFlow(TransactionHistoryUiState(portfolioName = portfolioName))
     val state: StateFlow<TransactionHistoryUiState> = _state.asStateFlow()
 
+    /**
+     * One-shot CSV-export events (E9.1). The screen collects these to drive the system save
+     * picker — see [com.virtualfunds.ui.export.CsvExportEffect]. A SharedFlow (not state) because
+     * launching the picker should happen once per tap, not re-fire on recomposition.
+     */
+    private val _csvExport = MutableSharedFlow<CsvExportEvent>(extraBufferCapacity = 1)
+    val csvExport: SharedFlow<CsvExportEvent> = _csvExport.asSharedFlow()
+
     init {
         load()
     }
@@ -160,6 +173,22 @@ class TransactionHistoryViewModel @Inject constructor(
         if (!_state.value.hasMore) return
         visibleCount += PAGE_SIZE
         applyFilters()
+    }
+
+    /**
+     * Export the currently filtered history to CSV (E9.1). Exports the **full** filtered set, not
+     * just the revealed page — display paging is a rendering concern, while "the currently
+     * displayed (filtered) view" is conceptually every matching operation (matches the desktop,
+     * which has no paging). Emits [CsvExportEvent.NoData] when nothing matches so the screen can
+     * say so instead of writing an empty file (mirrors desktop's "אין נתונים לייצוא").
+     */
+    fun onExportClick() {
+        val filtered = currentFilteredGroups()
+        if (filtered.isEmpty()) {
+            _csvExport.tryEmit(CsvExportEvent.NoData)
+            return
+        }
+        _csvExport.tryEmit(CsvExportEvent.Ready(buildTransactionHistoryCsv(filtered)))
     }
 
     // ── Undo (E6.12) ──────────────────────────────────────────────────────────────
@@ -254,10 +283,11 @@ class TransactionHistoryViewModel @Inject constructor(
     }
 
     /**
-     * Applies the three filters (E7.6) client-side over [allGroups], then truncates to the
-     * current display page. Mirrors desktop `TransactionHistoryViewModel.ApplyFilters`.
+     * Applies the three filters (E7.6) client-side over [allGroups] and returns the full matching
+     * set (no paging). Used both by [applyFilters] (which then truncates to the display page) and
+     * by [onExportClick] (which exports all of it). Mirrors desktop `ApplyFilters`.
      */
-    private fun applyFilters() {
+    private fun currentFilteredGroups(): List<TransactionGroup> {
         val s = _state.value
         var filtered = allGroups.asSequence()
 
@@ -277,7 +307,12 @@ class TransactionHistoryViewModel @Inject constructor(
             filtered = filtered.filter { it.transactionType == type }
         }
 
-        val all = filtered.toList()
+        return filtered.toList()
+    }
+
+    /** Applies the filters and truncates to the current display page (E7.6 display paging). */
+    private fun applyFilters() {
+        val all = currentFilteredGroups()
         val visible = all.take(visibleCount)
         _state.update {
             it.copy(
