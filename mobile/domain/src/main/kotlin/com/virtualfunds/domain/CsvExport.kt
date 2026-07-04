@@ -13,11 +13,10 @@ import java.util.Locale
  * text; the `:app` layer is responsible for writing the bytes (with a UTF-8 BOM) to the
  * user-chosen file.
  *
- * Mirrors the desktop `TransactionCsvExporter` / `PortfolioSnapshotCsvExporter`, with one
- * deliberate correctness fix: the money columns are CSV-escaped here. The desktop transaction
- * exporter inserts `FormatAgoras(...)` unescaped, so an amount ≥ ₪1,000 (e.g. "1,234.56 ₪")
- * splits the row on its thousands-comma and corrupts the file. The desktop *snapshot* exporter
- * already escapes its money column, confirming the omission is a bug; we escape money in both.
+ * Mirrors the desktop `TransactionCsvExporter` / `PortfolioSnapshotCsvExporter`. Money columns
+ * are CSV-escaped on both platforms: amounts ≥ ₪1,000 format with a thousands comma
+ * ("1,234.56 ₪") that would otherwise split the field. (The desktop transaction exporter
+ * originally omitted this escaping; fixed during the Phase 11 parity review.)
  */
 
 /** Row separator: CRLF per RFC 4180 (and matching the desktop's StringBuilder.AppendLine). */

@@ -18,7 +18,10 @@
       "Bash(\"/c/Program Files/Android/Android Studio/jbr/bin/javap.exe\" -p io/github/jan/supabase/postgrest/result/PostgrestResult)",
       "Bash(\"/c/Program Files/Android/Android Studio/jbr/bin/javap.exe\" -p io/github/jan/supabase/postgrest/exception/PostgrestRestException)",
       "PowerShell($env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; $env:Path = \"$env:JAVA_HOME\\\\bin;$env:Path\"; & .\\\\gradlew.bat --no-daemon :domain:test 2>&1 | Select-Object -Last 100)",
-      "Bash(export JAVA_HOME=\"/c/Program Files/Android/Android Studio/jbr\")"
+      "Bash(export JAVA_HOME=\"/c/Program Files/Android/Android Studio/jbr\")",
+      "Bash(JAVA_HOME=\"/c/Program Files/Android/Android Studio/jbr\" /c/Users/sagig/source/repos/VirtualFunds/mobile/gradlew -p /c/Users/sagig/source/repos/VirtualFunds/mobile :domain:test :app:testDebugUnitTest --console=plain)",
+      "Bash(git -C 'C:\\\\Users\\\\sagig\\\\source\\\\repos\\\\VirtualFunds' status --short)",
+      "Bash(git -C 'C:\\\\Users\\\\sagig\\\\source\\\\repos\\\\VirtualFunds' diff --stat -- mobile)"
     ]
   }
 }

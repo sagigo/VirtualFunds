@@ -248,4 +248,63 @@ public class TransactionCsvExporterTests
         // Simple text should appear without surrounding quotes
         Assert.Contains(",הפקדה לקרן,", csv);
     }
+
+    [Fact]
+    public void Export_SummaryAmountAtLeastOneThousandNis_IsQuoted()
+    {
+        // 123456 agoras = "1,234.56 ₪" — the thousands comma must not split the row.
+        var group = MakeGroup(amountAgoras: 123456);
+        var csv = TransactionCsvExporter.Export([group]);
+
+        Assert.Contains("\"1,234.56 ₪\"", csv);
+    }
+
+    [Fact]
+    public void Export_SummaryRowWithLargeAmount_StillHasSevenColumns()
+    {
+        var group = MakeGroup(amountAgoras: 123456); // "1,234.56 ₪"
+        var summaryRow = SplitLines(TransactionCsvExporter.Export([group]))[1];
+
+        // Split on commas outside quoted fields: strip quoted fields first, then count.
+        // A naive Split(',') would see 8 columns if the amount leaked its comma.
+        var columnCount = CountCsvColumns(summaryRow);
+        Assert.Equal(7, columnCount);
+    }
+
+    [Fact]
+    public void Export_DetailBalancesAtLeastOneThousandNis_AreQuoted()
+    {
+        var detail = MakeDetail(
+            amountAgoras: 200000,      // "2,000.00 ₪"
+            beforeBalance: 100000,     // "1,000.00 ₪"
+            afterBalance: 300000);     // "3,000.00 ₪"
+        var group = MakeGroup(details: [detail]);
+        var csv = TransactionCsvExporter.Export([group]);
+
+        Assert.Contains("\"2,000.00 ₪\"", csv);
+        Assert.Contains("\"1,000.00 ₪\"", csv);
+        Assert.Contains("\"3,000.00 ₪\"", csv);
+    }
+
+    [Fact]
+    public void Export_AmountBelowOneThousandNis_IsNotQuoted()
+    {
+        var group = MakeGroup(amountAgoras: 99999); // "999.99 ₪" — no comma, no quoting needed
+        var csv = TransactionCsvExporter.Export([group]);
+
+        Assert.Contains(",999.99 ₪,", csv);
+    }
+
+    /// <summary>Counts CSV columns in a single row, honoring RFC 4180 quoted fields.</summary>
+    private static int CountCsvColumns(string row)
+    {
+        var columns = 1;
+        var inQuotes = false;
+        foreach (var c in row)
+        {
+            if (c == '"') inQuotes = !inQuotes;
+            else if (c == ',' && !inQuotes) columns++;
+        }
+        return columns;
+    }
 }

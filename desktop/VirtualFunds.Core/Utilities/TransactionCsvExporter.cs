@@ -28,7 +28,9 @@ public static class TransactionCsvExporter
             var date = group.CommittedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
             var type = CsvEscape(group.TransactionTypeLabel);
             var summary = CsvEscape(group.SummaryText ?? string.Empty);
-            var amount = MoneyFormatter.FormatAgoras(group.AmountAgoras);
+            // Money columns must be escaped too: amounts ≥ 1,000 NIS format with a
+            // thousands comma ("1,234.56 ₪") which would otherwise split the field.
+            var amount = CsvEscape(MoneyFormatter.FormatAgoras(group.AmountAgoras));
 
             // Summary row (no fund, no before/after balance).
             sb.AppendLine($"{date},{type},{summary},,{amount},,");
@@ -38,11 +40,11 @@ public static class TransactionCsvExporter
             {
                 var detailType = CsvEscape(detail.TransactionTypeLabel);
                 var fundName = CsvEscape(detail.FundName);
-                var detailAmount = MoneyFormatter.FormatAgoras(detail.AmountAgoras);
+                var detailAmount = CsvEscape(MoneyFormatter.FormatAgoras(detail.AmountAgoras));
                 var before = detail.BeforeBalanceAgoras.HasValue
-                    ? MoneyFormatter.FormatAgoras(detail.BeforeBalanceAgoras.Value) : string.Empty;
+                    ? CsvEscape(MoneyFormatter.FormatAgoras(detail.BeforeBalanceAgoras.Value)) : string.Empty;
                 var after = detail.AfterBalanceAgoras.HasValue
-                    ? MoneyFormatter.FormatAgoras(detail.AfterBalanceAgoras.Value) : string.Empty;
+                    ? CsvEscape(MoneyFormatter.FormatAgoras(detail.AfterBalanceAgoras.Value)) : string.Empty;
 
                 sb.AppendLine($"{date},{detailType},,{fundName},{detailAmount},{before},{after}");
             }

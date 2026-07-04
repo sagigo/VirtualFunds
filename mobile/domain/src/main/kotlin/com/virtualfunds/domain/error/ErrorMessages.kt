@@ -5,9 +5,13 @@ import com.virtualfunds.domain.AppError
 /**
  * Maps a typed [AppError] to a Hebrew, user-facing message.
  *
- * The strings here are sourced from `VirtualFundsRequirements.md` Appendix A and from the
- * desktop's exception messages (`PortfolioExceptions.cs`, `FundExceptions.cs`, etc.) so the
- * two platforms surface the same wording for the same underlying token (E4.7).
+ * The strings follow the terminology of `VirtualFundsRequirements.md` Appendix A.
+ *
+ * Deliberate deviation from desktop (reviewed and accepted in the Phase 11 parity pass):
+ * desktop assigns operation-specific Hebrew wording at each catch-site in its WPF ViewModels
+ * (e.g. empty fund name → "נא להזין שם לקרן."), while mobile maps each error token to one
+ * generic message here. The meaning per token is identical; only the phrasing differs.
+ * Full alignment was considered and declined — revisit if the difference bothers real use.
  *
  * Why this lives in `:domain` and not in Android string resources:
  *   - `:data` and `:domain` produce [AppError]s; we want the mapping callable from those
