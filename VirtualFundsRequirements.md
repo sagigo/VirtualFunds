@@ -1527,7 +1527,8 @@ High-level algorithm per due scheduled deposit:
       - write summary type `ScheduledDepositExecuted`
       - write detail type `FundDeposit`
       - note on summary row: `SD:<scheduled_deposit_id> <optional text>`
-      - summary text language: server-generated summary texts (e.g. for `ScheduledDepositExecuted`) are stored in the language the server writes them. The client UI translates these for display using the `TransactionTypeLabels` mapping; the raw stored text is not shown directly to users.
+      - summary text on summary row: `הפקדה מתוזמנת ״<name>״ — מועד מקורי: <dd/MM/yyyy HH:mm>` — the timestamp is the occurrence's `scheduled_for_utc` rendered in Israel time. `committed_at_utc` records when the deposit actually executed; the summary text preserves the slot it was scheduled for, so catch-up executions (§E8.6) remain traceable to their original time. (Rows executed before this format was introduced whose occurrence records were already deleted per §E8.8 carry the name-only form `הפקדה מתוזמנת ״<name>״` — their original slot is no longer recoverable.)
+      - summary text language: server-generated summary texts are written in Hebrew, because both clients display the stored text as-is (expanded history row and CSV export). The history row title is still client-translated via the `TransactionTypeLabels` mapping.
       - set occurrence status to `Done`
       - store `operation_id`
       - advance `next_run_at_utc` to the next scheduled time

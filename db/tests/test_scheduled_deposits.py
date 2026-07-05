@@ -7,6 +7,7 @@ Sanity tests for scheduled deposit RPCs:
 import pytest
 from uuid import uuid4
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 from conftest import new_op, unique, assert_error
 
 
@@ -424,6 +425,37 @@ class TestExecuteDueScheduledDeposits:
         types = {(r["record_kind"], r["transaction_type"]) for r in rows.data}
         assert ("Summary", "ScheduledDepositExecuted") in types
         assert ("Detail", "FundDeposit") in types
+
+    def test_summary_text_contains_original_scheduled_time(self, client, portfolio_id, fund_id):
+        # E8.9: the Hebrew summary text embeds the occurrence's original slot
+        # (scheduled_for_utc in Israel time), so catch-up executions committed
+        # at trigger time remain traceable to the time they were scheduled for.
+        run_at = datetime.now(timezone.utc) - timedelta(hours=2)
+        name = unique("SD")
+        client.rpc("rpc_upsert_scheduled_deposit", {
+            "p_portfolio_id": portfolio_id,
+            "p_fund_id": fund_id,
+            "p_name": name,
+            "p_amount_agoras": 100,
+            "p_schedule_kind": "OneTime",
+            "p_next_run_at_utc": run_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        }).execute()
+
+        executed = client.rpc("rpc_execute_due_scheduled_deposits", {
+            "p_portfolio_id": portfolio_id,
+            "p_now_utc": now_utc_str(),
+            "p_device_id": str(uuid4()),
+        }).execute().data
+
+        row = (client.table("transactions")
+               .select("summary_text")
+               .eq("operation_id", executed[0]["operation_id"])
+               .eq("record_kind", "Summary")
+               .single()
+               .execute())
+
+        israel_slot = run_at.astimezone(ZoneInfo("Asia/Jerusalem")).strftime("%d/%m/%Y %H:%M")
+        assert row.data["summary_text"] == f"הפקדה מתוזמנת ״{name}״ — מועד מקורי: {israel_slot}"
 
     def test_idempotent_second_trigger_executes_nothing(self, client, portfolio_id, fund_id):
         client.rpc("rpc_upsert_scheduled_deposit", {
