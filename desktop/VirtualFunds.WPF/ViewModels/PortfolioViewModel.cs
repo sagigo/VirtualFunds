@@ -736,7 +736,7 @@ public sealed partial class PortfolioViewModel : ObservableObject
         {
             await PortfolioSnapshotCsvExporter.ExportToFileAsync(
                 _portfolioId,
-                _portfolioName,
+                PortfolioName,
                 Funds.ToList(),
                 filePath);
         }

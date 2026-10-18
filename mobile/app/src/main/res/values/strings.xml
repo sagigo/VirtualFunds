@@ -37,7 +37,6 @@
 
     <!-- Screen chrome -->
     <string name="portfolio_list_title">בחירת תיק</string>
-    <string name="portfolio_list_loading">טוען…</string>
     <string name="portfolio_list_empty">עדיין לא יצרת תיקים. לחץ על \'+ תיק חדש\' כדי להתחיל.</string>
     <string name="portfolio_list_cd_actions">פעולות לתיק</string>
     <string name="portfolio_list_error_load">שגיאה בטעינת התיקים. נסה שוב מאוחר יותר.</string>
@@ -47,7 +46,6 @@
     <string name="portfolio_action_create">+ תיק חדש</string>
     <string name="portfolio_action_rename">שנה שם</string>
     <string name="portfolio_action_delete">מחק</string>
-    <string name="portfolio_action_open">פתח</string>
 
     <!-- Create / rename dialog -->
     <string name="portfolio_dialog_create_title">תיק חדש</string>
@@ -76,7 +74,6 @@
     <!-- Wording mirrors desktop PortfolioViewModel.cs / PortfolioWindow.xaml. -->
 
     <!-- Screen chrome -->
-    <string name="fund_list_loading">טוען…</string>
     <string name="fund_list_empty">עדיין לא יצרת קרנות. לחץ על \'+ קרן חדשה\' כדי להתחיל.</string>
     <string name="fund_list_error_load">שגיאה בטעינת הקרנות. נסה שוב מאוחר יותר.</string>
     <string name="fund_list_retry">נסה שוב</string>
@@ -341,7 +338,6 @@
     <string name="sd_error_no_fund">נא לבחור קרן.</string>
     <string name="sd_error_amount_required">נא להזין סכום.</string>
     <string name="sd_error_no_weekday">נא לבחור לפחות יום אחד בשבוע.</string>
-    <string name="sd_error_no_date">נא לבחור תאריך.</string>
     <string name="sd_error_invalid_schedule_fields">שדות התזמון אינם תקינים.</string>
     <string name="sd_error_invalid_schedule_kind">סוג תזמון לא חוקי.</string>
     <string name="sd_error_amount_positive_server">הסכום חייב להיות חיובי.</string>

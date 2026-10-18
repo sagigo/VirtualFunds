@@ -47,8 +47,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -84,13 +84,14 @@ fun ScheduledDepositsScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    val context = LocalContext.current
+    val resources = LocalResources.current
 
     // Collect one-shot message events and show them as snackbars. Resolving the string-res id
-    // needs a Context (we're outside a @Composable scope inside the coroutine), hence getString.
+    // happens inside a coroutine (not composition), so we call Resources.getString directly;
+    // LocalResources (unlike LocalContext) recomposes if the configuration changes.
     LaunchedEffect(Unit) {
         viewModel.messages.collect { messageRes ->
-            snackbarHostState.showSnackbar(context.getString(messageRes))
+            snackbarHostState.showSnackbar(resources.getString(messageRes))
         }
     }
 

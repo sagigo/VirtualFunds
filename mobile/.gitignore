@@ -1,5 +1,7 @@
 *.iml
 .gradle
+# Kotlin 2.x toolchain session data (created by CLI Gradle runs)
+/.kotlin
 /local.properties
 /.idea/caches
 /.idea/libraries

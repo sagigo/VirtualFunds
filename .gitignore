@@ -26,4 +26,7 @@ desktop.ini
 *.env
 appsettings.*.json
 !appsettings.json
+
+# Claude Code session worktrees — never commit
+.claude/worktrees/
 db/tests/__pycache__/conftest.cpython-312.pyc

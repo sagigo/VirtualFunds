@@ -61,8 +61,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -160,12 +160,13 @@ private fun TransactionHistoryContent(
 ) {
     // Snackbar host for one-shot undo-failure messages (E6.12 step 5 is an expected outcome, so
     // we surface it transiently instead of replacing the whole list). When undoErrorRes flips
-    // non-zero we show it once, then tell the VM to clear it. getString (not stringResource) is
-    // used because we're inside a coroutine effect, not composition.
-    val context = LocalContext.current
+    // non-zero we show it once, then tell the VM to clear it. Resources.getString (not
+    // stringResource) is used because we're inside a coroutine effect, not composition;
+    // LocalResources (unlike LocalContext) recomposes if the configuration changes.
+    val resources = LocalResources.current
     LaunchedEffect(state.undoErrorRes) {
         if (state.undoErrorRes != 0) {
-            snackbarHostState.showSnackbar(context.getString(state.undoErrorRes))
+            snackbarHostState.showSnackbar(resources.getString(state.undoErrorRes))
             onUndoErrorShown()
         }
     }
@@ -586,7 +587,7 @@ private fun HistoryGroupCard(
     onUndoClick: (TransactionGroup) -> Unit,
 ) {
     var expanded by rememberSaveable(group.operationId) { mutableStateOf(false) }
-    val typeColor = TransactionTypeColor(group.transactionType)
+    val typeColor = transactionTypeColor(group.transactionType)
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -683,7 +684,7 @@ private fun HistoryDetailRow(detail: TransactionDetailItem) {
             LtrText(
                 text = formatSignedAgoras(detail.amountAgoras),
                 style = MaterialTheme.typography.bodySmall,
-                color = SignedAmountColor(detail.amountAgoras),
+                color = signedAmountColor(detail.amountAgoras),
             )
             detail.afterBalanceAgoras?.let { after ->
                 MutedLabel(" · ")
@@ -778,8 +779,10 @@ private fun ErrorRetry(messageRes: Int, onRetry: () -> Unit) {
  * Color-codes a summary type the same way the desktop history panel does:
  * deposit = green, withdrawal = red, transfer = teal, revaluation = amber, undo/other = muted.
  */
+// Lowercase name: Compose convention is that @Composable functions *returning a value*
+// are named like normal functions (uppercase is reserved for unit-returning UI emitters).
 @Composable
-private fun TransactionTypeColor(type: TransactionType): Color = when (type) {
+private fun transactionTypeColor(type: TransactionType): Color = when (type) {
     TransactionType.FundDeposit -> Color(0xFF2E7D32)
     TransactionType.FundWithdrawal -> MaterialTheme.colorScheme.error
     TransactionType.Transfer -> Color(0xFF00796B)
@@ -790,7 +793,7 @@ private fun TransactionTypeColor(type: TransactionType): Color = when (type) {
 
 /** Green for a credit, red for a debit, muted for zero (structural rows). */
 @Composable
-private fun SignedAmountColor(amountAgoras: Long): Color = when {
+private fun signedAmountColor(amountAgoras: Long): Color = when {
     amountAgoras > 0 -> Color(0xFF2E7D32)
     amountAgoras < 0 -> MaterialTheme.colorScheme.error
     else -> MaterialTheme.colorScheme.onSurfaceVariant

@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import com.virtualfunds.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharedFlow
@@ -73,7 +74,10 @@ fun CsvExportEffect(
     fileName: () -> String,
     snackbarHostState: SnackbarHostState,
 ) {
+    // context is for ContentResolver I/O; resources is for string lookups inside coroutines
+    // (LocalResources, unlike LocalContext, recomposes if the configuration changes).
     val context = LocalContext.current
+    val resources = LocalResources.current
     val scope = rememberCoroutineScope()
     // Bridges "user tapped export" (we have the content) and "user picked a destination" (we get
     // the Uri): the content is stashed here until the picker returns, then cleared.
@@ -88,7 +92,7 @@ fun CsvExportEffect(
         scope.launch {
             val ok = withContext(Dispatchers.IO) { writeCsvToUri(context, uri, content) }
             snackbarHostState.showSnackbar(
-                context.getString(if (ok) R.string.export_success else R.string.export_failure),
+                resources.getString(if (ok) R.string.export_success else R.string.export_failure),
             )
         }
     }
@@ -101,7 +105,7 @@ fun CsvExportEffect(
                     launcher.launch(fileName())
                 }
                 CsvExportEvent.NoData ->
-                    snackbarHostState.showSnackbar(context.getString(R.string.export_no_data))
+                    snackbarHostState.showSnackbar(resources.getString(R.string.export_no_data))
             }
         }
     }
